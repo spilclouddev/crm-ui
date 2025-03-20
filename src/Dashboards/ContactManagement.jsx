@@ -16,7 +16,7 @@ const ContactManagement = () => {
   const [error, setError] = useState(null);
 
   // API base URL
-  const API_URL = "http://localhost:5000/api/contacts";
+  const API_URL = "https://crm-be.fly.dev/api/contacts";
 
   // Fetch all contacts when component mounts
   useEffect(() => {
