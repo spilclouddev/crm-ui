@@ -1,22 +1,50 @@
 import React, { useState, useEffect } from "react";
+import ContactForm from "../Dashboards/Contact form/contactForm";
+import ContactDetails from "../Dashboards/Contact form/contactDetailsPopup";
 
 const ContactManagement = () => {
   const [contacts, setContacts] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedContact, setSelectedContact] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentContact, setCurrentContact] = useState({
     _id: null,
-    name: "",
-    email: "",
-    phone: "",
-    company: ""
+    contactType: "prospect",
+    companyName: "",
+    companyEmail: "",
+    phoneNumber: "",
+    website: "",
+    companyAddress: {
+      country: "",
+      state: "",
+      addressLine1: "",
+      addressLine2: "",
+      postalCode: ""
+    },
+    additionalDetails: "",
+    contactPersons: [],
+    attachments: []
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // API base URL
-  const API_URL = "https://crm-be.fly.dev/api/contacts";
+  // Add class to body when modal is open to prevent scrolling
+  useEffect(() => {
+    if (showForm || showDetails) {
+      document.body.classList.add('overflow-hidden');
+    } else {
+      document.body.classList.remove('overflow-hidden');
+    }
+    
+    return () => {
+      document.body.classList.remove('overflow-hidden');
+    };
+  }, [showForm, showDetails]);
+
+  // API base URL - ensure this matches your backend deployment
+  const API_URL = "http://localhost:5000/api/contacts";
 
   // Fetch all contacts when component mounts
   useEffect(() => {
@@ -29,14 +57,23 @@ const ContactManagement = () => {
     setError(null);
     
     try {
-      const response = await fetch(API_URL);
+      const response = await fetch(API_URL, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+      });
       
       if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        throw new Error(`Error: ${response.status} - ${errorData?.error || response.statusText}`);
       }
       
       const data = await response.json();
       setContacts(data);
+      
+      console.log("Successfully fetched contacts:", data);
     } catch (err) {
       setError("Failed to fetch contacts. " + err.message);
       console.error("Fetch error:", err);
@@ -45,54 +82,109 @@ const ContactManagement = () => {
     }
   };
 
-  // Filter contacts based on search term
-  const filteredContacts = contacts.filter(contact => 
-    contact.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.company?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter contacts based on search term - handle both old and new schema fields
+  const filteredContacts = contacts.filter(contact => {
+    const searchLower = searchTerm.toLowerCase();
+    
+    // Handle both old and new schema field names for backward compatibility
+    const companyName = contact.companyName || contact.company || "";
+    const companyEmail = contact.companyEmail || contact.email || "";
+    const contactType = contact.contactType || "";
+    const phoneNumber = contact.phoneNumber || contact.phone || "";
+    
+    return (
+      companyName.toLowerCase().includes(searchLower) ||
+      companyEmail.toLowerCase().includes(searchLower) ||
+      contactType.toLowerCase().includes(searchLower) ||
+      phoneNumber.toLowerCase().includes(searchLower)
+    );
+  });
 
   // Handle adding a new contact
   const handleAddNewContact = () => {
     setCurrentContact({
       _id: null,
-      name: "",
-      email: "",
-      phone: "",
-      company: ""
+      contactType: "prospect",
+      companyName: "",
+      companyEmail: "",
+      phoneNumber: "",
+      website: "",
+      companyAddress: {
+        country: "",
+        state: "",
+        addressLine1: "",
+        addressLine2: "",
+        postalCode: ""
+      },
+      additionalDetails: "",
+      contactPersons: [],
+      attachments: []
     });
     setIsEditing(false);
     setShowForm(true);
   };
 
+  // Handle viewing contact details
+  const handleViewContact = (contact) => {
+    setSelectedContact(contact);
+    setShowDetails(true);
+  };
+
   // Handle editing an existing contact
-  const handleEditContact = async (contact) => {
-    setIsLoading(true);
-    setError(null);
+  const handleEditContact = (contact) => {
+    // Create a structured object from either the new or old schema fields
+    const editContact = {
+      _id: contact._id,
+      contactType: contact.contactType || "prospect",
+      companyName: contact.companyName || contact.company || "",
+      companyEmail: contact.companyEmail || contact.email || "",
+      phoneNumber: contact.phoneNumber || contact.phone || "",
+      website: contact.website || "",
+      companyAddress: contact.companyAddress || {
+        country: "",
+        state: "",
+        addressLine1: "",
+        addressLine2: "",
+        postalCode: ""
+      },
+      additionalDetails: contact.additionalDetails || "",
+      contactPersons: contact.contactPersons || [],
+      attachments: contact.attachments || []
+    };
     
-    try {
-      const response = await fetch(`${API_URL}/${contact._id}`);
-      
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
-      }
-      
-      const contactData = await response.json();
-      setCurrentContact(contactData);
-      setIsEditing(true);
-      setShowForm(true);
-    } catch (err) {
-      setError("Failed to fetch contact details. " + err.message);
-      console.error("Fetch error:", err);
-    } finally {
-      setIsLoading(false);
+    setCurrentContact(editContact);
+    setIsEditing(true);
+    setShowForm(true);
+    setShowDetails(false); // Close details modal if open
+  };
+
+  // Form validation for the new schema
+  const validateForm = () => {
+    const errors = [];
+    
+    if (!currentContact.companyName || currentContact.companyName.trim() === "") {
+      errors.push("Company name is required");
     }
+    
+    if (!currentContact.companyEmail || currentContact.companyEmail.trim() === "") {
+      errors.push("Company email is required");
+    } else if (!/\S+@\S+\.\S+/.test(currentContact.companyEmail)) {
+      errors.push("Company email is invalid");
+    }
+    
+    if (!currentContact.phoneNumber || currentContact.phoneNumber.trim() === "") {
+      errors.push("Phone number is required");
+    }
+    
+    return errors;
   };
 
   // Handle saving a contact (new or edited)
   const handleSaveContact = async () => {
-    if (currentContact.name.trim() === "" || currentContact.email.trim() === "") {
-      alert("Name and email are required");
+    const validationErrors = validateForm();
+    
+    if (validationErrors.length > 0) {
+      alert(validationErrors.join("\n"));
       return;
     }
 
@@ -100,6 +192,19 @@ const ContactManagement = () => {
     setError(null);
     
     try {
+      // Use the new schema fields for the API request
+      const contactData = {
+        contactType: currentContact.contactType,
+        companyName: currentContact.companyName.trim(),
+        companyEmail: currentContact.companyEmail.trim(),
+        phoneNumber: currentContact.phoneNumber.trim(),
+        website: currentContact.website?.trim(),
+        companyAddress: currentContact.companyAddress,
+        additionalDetails: currentContact.additionalDetails,
+        contactPersons: currentContact.contactPersons,
+        attachments: currentContact.attachments
+      };
+      
       let response;
       
       if (isEditing) {
@@ -109,12 +214,7 @@ const ContactManagement = () => {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            name: currentContact.name,
-            email: currentContact.email,
-            phone: currentContact.phone,
-            company: currentContact.company
-          })
+          body: JSON.stringify(contactData)
         });
       } else {
         // Add new contact
@@ -123,24 +223,52 @@ const ContactManagement = () => {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            name: currentContact.name,
-            email: currentContact.email,
-            phone: currentContact.phone,
-            company: currentContact.company
-          })
+          body: JSON.stringify(contactData)
         });
       }
       
       if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        throw new Error(`Error: ${response.status} - ${errorData?.error || response.statusText}`);
       }
       
-      // Refresh the contacts list
-      await fetchContacts();
+      const savedContact = await response.json();
+      console.log(`Successfully ${isEditing ? 'updated' : 'created'} contact:`, savedContact);
+      
+      // Update the local state to avoid needing an extra fetch
+      if (isEditing) {
+        setContacts(contacts.map(c => 
+          c._id === savedContact._id ? savedContact : c
+        ));
+        
+        // If the details modal is showing this contact, update it there too
+        if (selectedContact && selectedContact._id === savedContact._id) {
+          setSelectedContact(savedContact);
+        }
+      } else {
+        setContacts([savedContact, ...contacts]);
+      }
       
       // Close form and reset
       setShowForm(false);
+      setCurrentContact({
+        _id: null,
+        contactType: "prospect",
+        companyName: "",
+        companyEmail: "",
+        phoneNumber: "",
+        website: "",
+        companyAddress: {
+          country: "",
+          state: "",
+          addressLine1: "",
+          addressLine2: "",
+          postalCode: ""
+        },
+        additionalDetails: "",
+        contactPersons: [],
+        attachments: []
+      });
     } catch (err) {
       setError(`Failed to ${isEditing ? 'update' : 'create'} contact. ` + err.message);
       console.error("Save error:", err);
@@ -161,11 +289,19 @@ const ContactManagement = () => {
         });
         
         if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
+          const errorData = await response.json().catch(() => null);
+          throw new Error(`Error: ${response.status} - ${errorData?.error || response.statusText}`);
         }
         
-        // Refresh the contacts list
-        await fetchContacts();
+        // Update local state instead of refetching
+        setContacts(contacts.filter(contact => contact._id !== id));
+        console.log("Successfully deleted contact with ID:", id);
+        
+        // Close details modal if it's showing the deleted contact
+        if (selectedContact && selectedContact._id === id) {
+          setShowDetails(false);
+          setSelectedContact(null);
+        }
       } catch (err) {
         setError("Failed to delete contact. " + err.message);
         console.error("Delete error:", err);
@@ -175,32 +311,46 @@ const ContactManagement = () => {
     }
   };
 
-  // Handle input change in form
+  // Handle input change in form (updated for nested objects)
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setCurrentContact({ ...currentContact, [name]: value });
+    
+    // Handle nested fields using dot notation (e.g., companyAddress.country)
+    if (name.includes('.')) {
+      const [parent, child] = name.split('.');
+      setCurrentContact({
+        ...currentContact,
+        [parent]: {
+          ...currentContact[parent],
+          [child]: value
+        }
+      });
+    } else {
+      // Regular field update
+      setCurrentContact({ ...currentContact, [name]: value });
+    }
   };
 
-  // Close modal
-  const closeModal = () => {
+  // Close modals
+  const closeFormModal = () => {
     setShowForm(false);
+  };
+  
+  const closeDetailsModal = () => {
+    setShowDetails(false);
+    setSelectedContact(null);
   };
 
   return (
     <div className="w-full min-h-screen flex flex-col bg-gray-50">
-      {/* Header bar with title */}
-      <div className="bg-gray-900 text-white px-6 py-4">
-        <h1 className="text-xl font-semibold">Contact Management</h1>
-      </div>
-      
       {/* Main content area */}
-      <div className="flex-grow px-6 py-4">
+      <div className="flex-grow p-4 sm:p-6">
         {/* Title and Add Button */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold"></h2>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <h2 className="text-xl sm:text-2xl font-bold">Business Contacts</h2>
           <button
             onClick={handleAddNewContact}
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+            className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             + Add Contact
           </button>
@@ -221,51 +371,53 @@ const ContactManagement = () => {
           </div>
         )}
         
-        {/* Search and Refresh Bar */}
-        <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex items-center space-x-4">
-          <div className="flex-grow">
-            <input
-              type="text"
-              placeholder="Search contacts..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-            />
+        {/* Search Bar - Responsive */}
+        <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+          <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <div className="w-full">
+              <input
+                type="text"
+                placeholder="Search contacts..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <button
+              onClick={fetchContacts}
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 bg-white rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Refresh
+            </button>
           </div>
-          <button
-            onClick={fetchContacts}
-            className="px-4 py-2 border border-gray-300 bg-white rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Refresh
-          </button>
         </div>
         
         {/* Loading Indicator */}
         {isLoading && (
           <div className="flex justify-center my-6">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
           </div>
         )}
         
-        {/* Contacts Table */}
+        {/* Contacts Table - Updated for mobile responsiveness */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Company
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Phone
+                  </th>
+                  <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -273,29 +425,66 @@ const ContactManagement = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredContacts.length > 0 ? (
                   filteredContacts.map((contact) => (
-                    <tr key={contact._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{contact.name}</div>
+                    <tr 
+                      key={contact._id} 
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleViewContact(contact)}
+                    >
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {contact.companyName || contact.company || "—"}
+                        </div>
+                        {/* Mobile view - Show contact type, email on same cell */}
+                        <div className="sm:hidden">
+                          <div className="text-xs text-gray-500">{contact.companyEmail || contact.email || "—"}</div>
+                          <div className="mt-1">
+                            {contact.contactType ? (
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                contact.contactType === 'customer' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {contact.contactType.charAt(0).toUpperCase() + contact.contactType.slice(1)}
+                              </span>
+                            ) : "—"}
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{contact.email}</div>
+                      <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {contact.contactType ? (
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              contact.contactType === 'customer' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {contact.contactType.charAt(0).toUpperCase() + contact.contactType.slice(1)}
+                            </span>
+                          ) : "—"}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{contact.phone}</div>
+                      <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{contact.companyEmail || contact.email || "—"}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{contact.company}</div>
+                      <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{contact.phoneNumber || contact.phone || "—"}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={e => e.stopPropagation()}>
                         <button
-                          onClick={() => handleEditContact(contact)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditContact(contact);
+                          }}
                           className="text-indigo-600 hover:text-indigo-900 mr-4"
                           disabled={isLoading}
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDeleteContact(contact._id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteContact(contact._id);
+                          }}
                           className="text-red-600 hover:text-red-900"
                           disabled={isLoading}
                         >
@@ -317,102 +506,28 @@ const ContactManagement = () => {
         </div>
       </div>
 
-      {/* Modal Form */}
+      {/* Contact Form Component - Needs to be updated in contactForm.jsx for mobile responsiveness */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {isEditing ? "Edit Contact" : "Add New Contact"}
-              </h3>
-              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    id="name"
-                    placeholder="Full Name"
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    value={currentContact.name}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
-                  <input
-                    type="email"
-                    name="email"
-                    id="email"
-                    placeholder="email@example.com"
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    value={currentContact.email}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone number</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    id="phone"
-                    placeholder="555-123-4567"
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    value={currentContact.phone}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="company" className="block text-sm font-medium text-gray-700">Company Name</label>
-                  <input
-                    type="text"
-                    name="company"
-                    id="company"
-                    placeholder="Company Inc."
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    value={currentContact.company}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  disabled={isLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveContact}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </span>
-                  ) : (
-                    isEditing ? "Update Contact" : "Add Contact"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ContactForm 
+          currentContact={currentContact}
+          handleInputChange={handleInputChange}
+          setCurrentContact={setCurrentContact}
+          handleSaveContact={handleSaveContact}
+          closeModal={closeFormModal}
+          isEditing={isEditing}
+          isLoading={isLoading}
+        />
+      )}
+      
+      {/* Contact Details Component - Needs to be updated in contactDetailsPopup.jsx for mobile responsiveness */}
+      {showDetails && selectedContact && (
+        <ContactDetails 
+          contact={selectedContact}
+          closeModal={closeDetailsModal}
+          handleEdit={handleEditContact}
+          handleDelete={handleDeleteContact}
+          isLoading={isLoading}
+        />
       )}
     </div>
   );
