@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import TaskForm from "../Dashboards/Task management/taskForm";
 
 // API URL - adjust according to your backend setup
-const API_URL = `${import.meta.env.VITE_API_URL}/api`;
+const API_URL = `https://crm-be.fly.dev/api`;
 
 // Local storage keys
 const TASKS_STORAGE_KEY = "crm_tasks";

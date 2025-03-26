@@ -52,8 +52,8 @@ const ContactManagement = () => {
   }, [showForm, showDetails]);
 
   // API base URL - ensure this matches your backend deployment
-  const API_URL = `${import.meta.env.VITE_API_URL}/api/contacts`;
-  const AUTH_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
+  const API_URL = `https://crm-be.fly.dev/api/contacts`;
+  const AUTH_URL = `https://crm-be.fly.dev/api/auth`;
 
   // Check if user is authenticated on mount
   useEffect(() => {

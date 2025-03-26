@@ -34,7 +34,7 @@ const ForgotPassword = () => {
 
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/auth/forgot-password`,
+          `https://crm-be.fly.dev/api/auth/forgot-password`,
           {
             method: "POST",
             headers: {

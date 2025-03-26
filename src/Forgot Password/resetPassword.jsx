@@ -60,7 +60,7 @@ const ResetPassword = () => {
 
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/auth/reset-password`,
+          `https://crm-be.fly.dev/api/auth/reset-password`,
           {
             method: "POST",
             headers: {

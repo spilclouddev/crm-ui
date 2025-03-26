@@ -6,7 +6,7 @@ import LeadForm, {
 import LeadDetailsModal from "../Dashboards/Leads and Opportunity/leadDetailsPopup"; // Import the new modal component
 
 // API base URL - change this to match your backend
-const API_URL = `${import.meta.env.VITE_API_URL}/api`;
+const API_URL = `https://crm-be.fly.dev/api`;
 
 const LeadsAndOpportunities = () => {
   const [leads, setLeads] = useState([]);

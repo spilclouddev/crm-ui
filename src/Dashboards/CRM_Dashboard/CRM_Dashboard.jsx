@@ -10,7 +10,7 @@ import { Menu, X, Bell } from "lucide-react";
 
 // Local storage key for notifications
 const NOTIFICATIONS_STORAGE_KEY = "crm_notifications";
-const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api`; // Adjust this to match your backend URL
+const API_BASE_URL = `https://crm-be.fly.dev/api`; // Adjust this to match your backend URL
 
 const sections = [
   { id: "contact", name: "Contact Management" },
