@@ -165,7 +165,7 @@ const ResetPassword = () => {
         <div className="text-center mt-4">
           <p className="text-xs text-center sm:px-6 text-gray-400">
             Remember your password?
-            <a href="/login" className="underline text-gray-100 ml-1">Sign in</a>
+            <a href="/" className="underline text-gray-100 ml-1">Sign in</a>
           </p>
         </div>
       </div>
