@@ -29,6 +29,14 @@ const ContactManagement = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [loginCredentials, setLoginCredentials] = useState({
+    email: '',
+    password: ''
+  });
 
   // Add class to body when modal is open to prevent scrolling
   useEffect(() => {
@@ -45,29 +53,114 @@ const ContactManagement = () => {
 
   // API base URL - ensure this matches your backend deployment
   const API_URL = "http://localhost:5000/api/contacts";
+  const AUTH_URL = "http://localhost:5000/api/auth";
 
-  // Fetch all contacts when component mounts
+  // Check if user is authenticated on mount
   useEffect(() => {
-    fetchContacts();
+    const token = localStorage.getItem('token');
+    if (token) {
+      setIsAuthenticated(true);
+    } else {
+      setShowLoginForm(true);
+    }
   }, []);
 
-  // Fetch contacts from API
+  // Fetch contacts when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchContacts();
+    }
+  }, [isAuthenticated]);
+
+  // Handle login
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${AUTH_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: loginCredentials.email,
+          password: loginCredentials.password
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Login failed: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Save token to localStorage
+      localStorage.setItem('token', data.token);
+      
+      // Update auth state
+      setIsAuthenticated(true);
+      setShowLoginForm(false);
+      
+      // Fetch contacts
+      fetchContacts();
+    } catch (err) {
+      console.error("Login error:", err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setIsAuthenticated(false);
+    setShowLoginForm(true);
+    setContacts([]);
+  };
+
+  // Get the authentication token
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
+  // Fetch contacts from API with authentication
   const fetchContacts = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
+      const token = getAuthToken();
+      
+      if (!token) {
+        setIsAuthenticated(false);
+        setShowLoginForm(true);
+        throw new Error("Authentication required. Please log in.");
+      }
+      
       const response = await fetch(API_URL, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
       });
       
+      if (response.status === 401) {
+        // Authentication error - token expired or invalid
+        localStorage.removeItem('token');
+        setIsAuthenticated(false);
+        setShowLoginForm(true);
+        throw new Error("Authentication expired. Please log in again.");
+      }
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(`Error: ${response.status} - ${errorData?.error || response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Error: ${response.status} - ${errorData.error || response.statusText}`);
       }
       
       const data = await response.json();
@@ -179,7 +272,7 @@ const ContactManagement = () => {
     return errors;
   };
 
-  // Handle saving a contact (new or edited)
+  // Handle saving a contact (new or edited) with auth
   const handleSaveContact = async () => {
     const validationErrors = validateForm();
     
@@ -192,6 +285,14 @@ const ContactManagement = () => {
     setError(null);
     
     try {
+      const token = getAuthToken();
+      
+      if (!token) {
+        setIsAuthenticated(false);
+        setShowLoginForm(true);
+        throw new Error("Authentication required. Please log in.");
+      }
+      
       // Use the new schema fields for the API request
       const contactData = {
         contactType: currentContact.contactType,
@@ -212,7 +313,8 @@ const ContactManagement = () => {
         response = await fetch(`${API_URL}/${currentContact._id}`, {
           method: 'PUT',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(contactData)
         });
@@ -221,15 +323,24 @@ const ContactManagement = () => {
         response = await fetch(API_URL, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(contactData)
         });
       }
       
+      if (response.status === 401) {
+        // Authentication expired
+        localStorage.removeItem('token');
+        setIsAuthenticated(false);
+        setShowLoginForm(true);
+        throw new Error("Authentication expired. Please log in again.");
+      }
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(`Error: ${response.status} - ${errorData?.error || response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Error: ${response.status} - ${errorData.error || response.statusText}`);
       }
       
       const savedContact = await response.json();
@@ -277,20 +388,38 @@ const ContactManagement = () => {
     }
   };
 
-  // Handle deleting a contact
+  // Handle deleting a contact with auth
   const handleDeleteContact = async (id) => {
     if (window.confirm("Are you sure you want to delete this contact?")) {
       setIsLoading(true);
       setError(null);
       
       try {
+        const token = getAuthToken();
+        
+        if (!token) {
+          setIsAuthenticated(false);
+          setShowLoginForm(true);
+          throw new Error("Authentication required. Please log in.");
+        }
+        
         const response = await fetch(`${API_URL}/${id}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
         
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          setIsAuthenticated(false);
+          setShowLoginForm(true);
+          throw new Error("Authentication expired. Please log in again.");
+        }
+        
         if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          throw new Error(`Error: ${response.status} - ${errorData?.error || response.statusText}`);
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`Error: ${response.status} - ${errorData.error || response.statusText}`);
         }
         
         // Update local state instead of refetching
@@ -331,6 +460,15 @@ const ContactManagement = () => {
     }
   };
 
+  // Handle login form input changes
+  const handleLoginInputChange = (e) => {
+    const { name, value } = e.target;
+    setLoginCredentials({
+      ...loginCredentials,
+      [name]: value
+    });
+  };
+
   // Close modals
   const closeFormModal = () => {
     setShowForm(false);
@@ -341,6 +479,72 @@ const ContactManagement = () => {
     setSelectedContact(null);
   };
 
+  // If not authenticated and login form is showing
+  if (showLoginForm) {
+    return (
+      <div className="w-full min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-2xl font-bold mb-6 text-center">Login to Access Contacts</h2>
+          
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+              {error}
+            </div>
+          )}
+          
+          <form onSubmit={handleLogin}>
+            <div className="mb-4">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={loginCredentials.email}
+                onChange={handleLoginInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                required
+              />
+            </div>
+            
+            <div className="mb-6">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={loginCredentials.password}
+                onChange={handleLoginInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                required
+              />
+            </div>
+            
+            <button
+              type="submit"
+              className="w-full py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Logging in...
+                </span>
+              ) : "Login"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Main contacts view for authenticated users
   return (
     <div className="w-full min-h-screen flex flex-col bg-gray-50">
       {/* Main content area */}
@@ -348,12 +552,20 @@ const ContactManagement = () => {
         {/* Title and Add Button */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <h2 className="text-xl sm:text-2xl font-bold">Business Contacts</h2>
-          <button
-            onClick={handleAddNewContact}
-            className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            + Add Contact
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleAddNewContact}
+              className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              + Add Contact
+            </button>
+            <button
+              onClick={handleLogout}
+              className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            >
+              Logout
+            </button>
+          </div>
         </div>
         
         {/* Error message */}
@@ -506,7 +718,7 @@ const ContactManagement = () => {
         </div>
       </div>
 
-      {/* Contact Form Component - Needs to be updated in contactForm.jsx for mobile responsiveness */}
+      {/* Contact Form Component */}
       {showForm && (
         <ContactForm 
           currentContact={currentContact}
@@ -519,7 +731,7 @@ const ContactManagement = () => {
         />
       )}
       
-      {/* Contact Details Component - Needs to be updated in contactDetailsPopup.jsx for mobile responsiveness */}
+      {/* Contact Details Component */}
       {showDetails && selectedContact && (
         <ContactDetails 
           contact={selectedContact}
