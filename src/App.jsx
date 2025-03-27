@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, HashRouter } from "react-router-dom";
 import { useState } from 'react'
 import Login from "./Login/Login";
 import Signup from "./Signup/Signup";
@@ -15,7 +15,7 @@ function App() {
   const [count, setCount] = useState(0)
 
   return (
-    <Router>
+    <HashRouter>
       <Routes>
         {/* <Route path="/" element={<h1>Home Page</h1>} /> */}
         <Route path="/" element={<Login />} />
@@ -24,7 +24,7 @@ function App() {
         <Route path="/forgotpassword" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} /> {/* Add this line */}
       </Routes>
-    </Router>
+    </HashRouter>
   );
 }
 export default App
