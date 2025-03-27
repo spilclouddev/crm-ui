@@ -24,3 +24,11 @@ primary_region = 'bom'
 
 [env]
   VITE_API_URL='https://crm-be.fly.dev'
+
+[[statics]]
+  guest_path = "/app/build"
+  url_prefix = "/"
+
+[[http_service.routes]]
+  match = "/*"
+  destination = "/index.html"
