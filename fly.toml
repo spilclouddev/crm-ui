@@ -29,6 +29,9 @@ primary_region = 'bom'
   guest_path = "/app/build"
   url_prefix = "/"
 
+[[http_service]]
+  internal_port = 8080
+
 [[http_service.routes]]
   match = "/*"
   destination = "/index.html"
