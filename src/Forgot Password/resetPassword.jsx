@@ -59,20 +59,17 @@ const ResetPassword = () => {
       setIsLoading(true);
 
       try {
-        const response = await fetch(
-          `https://crm-be.fly.dev/api/auth/reset-password`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              token,
-              newPassword: formData.newPassword,
-            }),
-          }
-        );
-
+        const response = await fetch("https://crm-be.fly.dev/api/auth/reset-password", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            token,
+            newPassword: formData.newPassword
+          })
+        });
+        
         const data = await response.json();
 
         if (response.ok) {

@@ -6,7 +6,7 @@ import LeadForm, {
 import LeadDetailsModal from "../Dashboards/Leads and Opportunity/leadDetailsPopup"; // Import the new modal component
 
 // API base URL - change this to match your backend
-const API_URL = `https://crm-be.fly.dev/api`;
+const API_URL = "https://crm-be.fly.dev/api";
 
 const LeadsAndOpportunities = () => {
   const [leads, setLeads] = useState([]);
@@ -334,19 +334,27 @@ const LeadsAndOpportunities = () => {
 
       {/* Leads List Section */}
       <div className="bg-white p-4 sm:p-6 rounded-md shadow">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <h2 className="text-lg sm:text-xl font-semibold">Leads List</h2>
-          <button
-            className="w-full sm:w-auto bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md"
-            onClick={() => {
-              setCurrentLead(null);
-              setShowForm(true);
-            }}
-          >
-            + New Lead
-          </button>
-        </div>
-
+      <div className="flex flex-col sm:flex-row items-start sm:items-center mb-6 gap-4">
+  {/* <h2 className="text-lg sm:text-xl font-semibold">Leads List</h2> */}
+  
+  <div className="flex flex-col sm:flex-row gap-3">
+    <button 
+      className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md"
+      onClick={() => {
+        setCurrentLead(null);
+        setShowForm(true);
+      }}
+    >
+      + New Lead
+    </button>
+    <button 
+      className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md"
+    >
+      Export
+    </button>
+  </div>
+</div>
+        
         {/* Lead form (conditionally shown) */}
         {showForm && (
           <LeadForm

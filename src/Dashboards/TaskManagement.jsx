@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import TaskForm from "../Dashboards/Task management/taskForm";
 
 // API URL - adjust according to your backend setup
-const API_URL = `https://crm-be.fly.dev/api`;
+const API_URL = "https://crm-be.fly.dev/api";
 
 // Local storage keys
 const TASKS_STORAGE_KEY = "crm_tasks";
@@ -442,22 +442,29 @@ const TaskManagement = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="w-full h-full">
       {/* Header and controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-        <h1 className="text-xl sm:text-2xl font-bold">Task Management</h1>
-
-        <button
-          onClick={() => {
-            setCurrentTask(null);
-            setShowForm(true);
-          }}
-          className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          + Add New Task
-        </button>
-      </div>
-
+      <div className="flex flex-col sm:flex-row sm:items-center mb-6 gap-4">
+  {/* <h1 className="text-xl sm:text-2xl font-bold">Task Management</h1> */}
+  
+  <div className="flex flex-col sm:flex-row gap-3">
+    <button
+      onClick={() => {
+        setCurrentTask(null);
+        setShowForm(true);
+      }}
+      className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+    >
+      + Add New Task
+    </button>
+    <button
+      className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+    >
+      Export
+    </button>
+  </div>
+</div>
+      
       {/* Task form (conditionally shown) */}
       {showForm && (
         <div className="mb-6">
@@ -517,7 +524,7 @@ const TaskManagement = () => {
       </div>
 
       {/* Tasks list */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-white rounded-lg shadow-md overflow-hidden w-full">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading tasks...</div>
         ) : filteredTasks.length === 0 ? (
@@ -528,7 +535,7 @@ const TaskManagement = () => {
               : "Create a new task to get started."}
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="w-full">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
