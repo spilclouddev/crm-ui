@@ -12,6 +12,15 @@ const LeadDetailsModal = ({ lead, onClose }) => {
   const [conversionRates, setConversionRates] = useState({});
   const [audValue, setAudValue] = useState(null);
 
+  // Function to get auth headers
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+      'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json'
+    };
+  };
+
   // Fetch current user, currency rates and audit logs when component mounts
   useEffect(() => {
     if (!lead?._id) return;
@@ -95,24 +104,40 @@ const LeadDetailsModal = ({ lead, onClose }) => {
   const fetchAuditLogs = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/leads/audit/${lead._id}`);
+      
+      // Get auth headers
+      const headers = getAuthHeaders();
+      
+      console.log(`Fetching audit logs for lead ID: ${lead._id}`);
+      const response = await fetch(`${API_URL}/leads/audit/${lead._id}`, {
+        headers: headers
+      });
+      
+      // Log the response status for debugging
+      console.log('Audit logs API response status:', response.status);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch audit logs');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response data:', errorData);
+        throw new Error(errorData.error || 'Failed to fetch audit logs');
       }
       
       const data = await response.json();
+      console.log('Received audit logs:', data);
+      
       setAuditLogs(data);
       setLoading(false);
     } catch (err) {
       console.error("Error fetching audit logs:", err);
-      setError("Failed to load audit history.");
-      
-      // For demo purposes - mock data when real endpoint doesn't exist yet
-      // Remove this in production when backend is implemented
-      const mockAuditData = generateMockAuditData(lead);
-      setAuditLogs(mockAuditData);
+      setError(`Failed to load audit history: ${err.message}`);
       setLoading(false);
+      
+      // Fallback to mock data only if we're in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Using mock audit data as fallback');
+        const mockAuditData = generateMockAuditData(lead);
+        setAuditLogs(mockAuditData);
+      }
     }
   };
 
@@ -257,6 +282,7 @@ const LeadDetailsModal = ({ lead, onClose }) => {
       case "currencyCode": return "Currency";
       case "notes": return "Notes";
       case "leadOwner": return "Lead Owner";
+      case "status": return "Status"; // For handling deletion logs
       default: return fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
     }
   };
@@ -277,7 +303,7 @@ const LeadDetailsModal = ({ lead, onClose }) => {
 
   // Format field value for display
   const formatFieldValue = (field, value) => {
-    if (!value) return "—";
+    if (value === undefined || value === null || value === "") return "—";
     
     switch(field) {
       case "value":
@@ -289,15 +315,23 @@ const LeadDetailsModal = ({ lead, onClose }) => {
       case "priority":
         return <span className={`${getPriorityBadgeColor(value)} px-2 py-1 rounded-full text-xs inline-block`}>{value}</span>;
       
+      case "status":
+        if (value === "Deleted") {
+          return <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs inline-block">Deleted</span>;
+        }
+        return <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs inline-block">{value}</span>;
+      
       case "contactPerson":
         // For contact person, try to extract the name if it's a complex object
         try {
-          if (value.includes('name:')) {
+          if (typeof value === 'string' && value.includes('name:')) {
             const nameMatch = value.match(/name:\s*'([^']+)'/);
-            return nameMatch ? nameMatch[1] : "Contact";
+            return nameMatch ? nameMatch[1] : value;
           }
-        } catch (e) {}
-        return "Contact";
+        } catch (e) {
+          console.error("Error formatting contact person:", e);
+        }
+        return value;
         
       default:
         // For all other fields, return the string value but truncate if too long
@@ -350,6 +384,10 @@ const LeadDetailsModal = ({ lead, onClose }) => {
                   <p className="font-medium">{lead.company || 'N/A'}</p>
                 </div>
                 <div>
+                  <span className="text-sm text-gray-500">Contact:</span>
+                  <p className="font-medium">{lead.contactPerson?.name || 'N/A'}</p>
+                </div>
+                <div>
                   <span className="text-sm text-gray-500">Lead Owner:</span>
                   <p className="font-medium">{lead.leadOwner || 'Unassigned'}</p>
                 </div>
@@ -371,7 +409,8 @@ const LeadDetailsModal = ({ lead, onClose }) => {
                 <div>
                   <span className="text-sm text-gray-500">AUD Value:</span>
                   <p className="font-medium">
-                    {audValue ? formatCurrencyValue(audValue) : '—'}
+                    {lead.audValue ? formatCurrencyValue(lead.audValue) : 
+                     (audValue ? formatCurrencyValue(audValue) : '—')}
                   </p>
                 </div>
                 <div>
@@ -439,8 +478,28 @@ const LeadDetailsModal = ({ lead, onClose }) => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {auditLogs.flatMap(log => {
-                      // Filter out ContactPerson changes
-                      const filteredChanges = log.changes.filter(change => change.field !== "contactPerson");
+                      // If there are no changes, render a single row with a message
+                      if (!log.changes || log.changes.length === 0) {
+                        return [
+                          <tr key={log._id} className="hover:bg-gray-50">
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                              {formatDate(log.timestamp)}
+                            </td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {getUserName(log.userName)}
+                            </td>
+                            <td colSpan={3} className="px-4 py-2 text-sm text-gray-500 italic">
+                              No specific changes recorded
+                            </td>
+                          </tr>
+                        ];
+                      }
+                      
+                      // Filter out empty changes
+                      const filteredChanges = log.changes.filter(change => 
+                        change && change.field && (change.field !== "contactPerson" || 
+                        (change.oldValue !== change.newValue))
+                      );
                       
                       // Skip this entire log entry if there are no changes left after filtering
                       if (filteredChanges.length === 0) return [];

@@ -1,21 +1,26 @@
 import React, { useState, useEffect } from "react";
 import TaskForm from "../Dashboards/Task management/taskForm";
+import TaskCalendar from "../Dashboards/MyTasks/TaskCalendar"; // Import the calendar component
 
 // API URL - adjust according to your backend setup
 const API_URL = "http://localhost:5000/api";
 
 // Local storage keys
 const TASKS_STORAGE_KEY = "crm_tasks";
-const REMINDER_CHECK_INTERVAL = 15000; // Check every 15 seconds for testing
+const USER_INFO_KEY = "user_info";
 
-const TaskManagement = () => {
+const MyTasks = () => {
   const [tasks, setTasks] = useState([]);
+  const [myTasks, setMyTasks] = useState([]);
+  const [filteredTasks, setFilteredTasks] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [currentTask, setCurrentTask] = useState(null);
   const [filterStatus, setFilterStatus] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
+  const [calendarSelectedTasks, setCalendarSelectedTasks] = useState(null);
 
   // Function to get auth headers
   const getAuthHeaders = () => {
@@ -43,28 +48,114 @@ const TaskManagement = () => {
     localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(taskData));
   };
 
-  // Function to fetch tasks - now checks local storage first, then API as fallback
-  const fetchTasks = async () => {
-    setIsLoading(true);
+  // Function to get current user info
+  const getCurrentUser = async () => {
     try {
-      // Get auth headers (will throw if no token)
       const headers = getAuthHeaders();
-
-      // Try API first
-      const response = await fetch(`${API_URL}/tasks`, { headers });
+      // Use the correct endpoint for your authentication system
+      const response = await fetch(`${API_URL}/auth/me`, { headers });
       
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
       
-      const data = await response.json();
-      setTasks(data);
-      
-      // Save to local storage
-      saveTasksToStorage(data);
-      setError(null);
+      const userData = await response.json();
+      setCurrentUser(userData);
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(userData));
+      return userData;
     } catch (err) {
-      console.error("API fetch error:", err);
+      console.error("Error fetching current user:", err);
+      
+      // Try to get from local storage as fallback
+      const storedUser = localStorage.getItem(USER_INFO_KEY);
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        setCurrentUser(userData);
+        return userData;
+      }
+      
+      setError("Failed to get user information. Please log in again.");
+      return null;
+    }
+  };
+
+  // Function to fetch tasks assigned to current user
+  const fetchTasks = async () => {
+    if (isLoading) return; // Prevent multiple simultaneous fetches
+    
+    setIsLoading(true);
+    setError(null); // Clear previous errors
+    
+    try {
+      // First get the current user info
+      const user = await getCurrentUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+      
+      // Get auth headers
+      const headers = getAuthHeaders();
+
+      // First try the dedicated endpoint for my tasks
+      try {
+        console.log("Fetching tasks from /tasks/my endpoint");
+        const response = await fetch(`${API_URL}/tasks/my`, { headers });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const myTasksData = await response.json();
+        console.log(`Fetched ${myTasksData.length} tasks from /tasks/my endpoint`);
+        setMyTasks(myTasksData);
+        // Reset calendar selection when fetching new data
+        setCalendarSelectedTasks(null);
+        setError(null);
+        
+        // Also fetch all tasks for potential operations (silent background fetch)
+        try {
+          const allTasksResponse = await fetch(`${API_URL}/tasks`, { headers });
+          if (allTasksResponse.ok) {
+            const allTasksData = await allTasksResponse.json();
+            setTasks(allTasksData);
+            // Save to local storage
+            saveTasksToStorage(allTasksData);
+          }
+        } catch (allTasksErr) {
+          console.error("Failed to fetch all tasks, but my tasks were fetched:", allTasksErr);
+          // No need to show error, since my tasks were fetched successfully
+        }
+      } catch (myTasksErr) {
+        console.error("API error for /tasks/my, trying fallback:", myTasksErr);
+        
+        // If /tasks/my fails, try the general tasks endpoint and filter
+        try {
+          const response = await fetch(`${API_URL}/tasks`, { headers });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          
+          const allTasks = await response.json();
+          setTasks(allTasks);
+          
+          // Filter for current user's tasks
+          const assignedTasks = allTasks.filter(task => task.assignedTo === user.name);
+          console.log(`Filtered ${assignedTasks.length} tasks for current user from all tasks`);
+          setMyTasks(assignedTasks);
+          // Reset calendar selection when fetching new data
+          setCalendarSelectedTasks(null);
+          setError(null);
+          
+          // Save to local storage
+          saveTasksToStorage(allTasks);
+        } catch (allTasksErr) {
+          throw allTasksErr; // Throw to outer catch for local storage fallback
+        }
+      }
+    } catch (err) {
+      console.error("All API fetch attempts failed:", err);
       
       // If API fails, try to load from local storage
       try {
@@ -72,6 +163,16 @@ const TaskManagement = () => {
         if (localTasks.length > 0) {
           console.log("Using cached tasks from local storage");
           setTasks(localTasks);
+          
+          // Filter tasks for current user from local storage
+          if (currentUser) {
+            const assignedTasks = localTasks.filter(task => task.assignedTo === currentUser.name);
+            console.log(`Found ${assignedTasks.length} tasks for current user in local storage`);
+            setMyTasks(assignedTasks);
+            // Reset calendar selection when fetching new data
+            setCalendarSelectedTasks(null);
+          }
+          
           setError("Using cached data. Reconnect to update.");
         } else {
           setError('Failed to fetch tasks. Please check your connection.');
@@ -85,150 +186,52 @@ const TaskManagement = () => {
     }
   };
 
-  // Load tasks on component mount and set up reminder checking
+  // Load tasks on component mount - only once
   useEffect(() => {
-    console.log("TaskManagement component mounted");
+    console.log("MyTasks component mounted");
     fetchTasks();
-
-    // Check for reminders immediately on mount
-    console.log("Running initial reminder check...");
-    setTimeout(checkTaskReminders, 1000);
-    
-    // Set up interval to check for due reminders
-    console.log("Setting up reminder check interval...");
-    const reminderInterval = setInterval(checkTaskReminders, REMINDER_CHECK_INTERVAL);
-    
-    // Clean up interval on unmount
-    return () => {
-      console.log("Cleaning up reminder interval");
-      clearInterval(reminderInterval);
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Function to check for task reminders
-  const checkTaskReminders = async () => {
-    console.log("Checking for task reminders...");
-    try {
-      // First try to get current user info to check only for tasks assigned to this user
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.log("No authentication token, skipping reminder check");
-        return;
-      }
-      
-      // Try to get current user to only create notifications for tasks assigned to them
-      let currentUsername = null;
-      try {
-        const userResponse = await fetch(`${API_URL}/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          currentUsername = userData.name;
-          console.log(`Current user: ${currentUsername}`);
-        }
-      } catch (err) {
-        console.error("Error fetching current user:", err);
-        // Continue without username - we'll check all local tasks
-      }
-      
-      const allTasks = loadTasksFromStorage();
-      console.log(`Checking ${allTasks.length} tasks for reminders`);
-      
-      const now = new Date();
-      
-      let updatedTasks = [...allTasks];
-      let hasUpdates = false;
-      
-      // Process each task
-      for (let i = 0; i < updatedTasks.length; i++) {
-        const task = updatedTasks[i];
-        
-        // Skip tasks not assigned to current user (for notifications only)
-        if (currentUsername && task.assignedTo !== currentUsername) {
-          console.log(`Skipping notification for task not assigned to current user: ${task.title}`);
-          continue;
-        }
-        
-        // Check for reminders
-        if (task.reminderDate && task.reminderTime && !task.reminderNotified) {
-          console.log(`Checking reminder for task: ${task.title}`);
-          
-          try {
-            // Combine the date and time strings
-            const reminderDateTime = new Date(`${task.reminderDate}T${task.reminderTime}`);
-            
-            // Check if reminder time has passed
-            if (!isNaN(reminderDateTime.getTime()) && reminderDateTime <= now) {
-              console.log("Reminder time has passed! Creating notification...");
-              
-              // Mark as notified
-              updatedTasks[i] = {
-                ...task,
-                reminderNotified: true
-              };
-              
-              hasUpdates = true;
-              
-              // Create notification
-              const notification = {
-                id: `task-reminder-${task._id || task.id || Date.now()}`,
-                title: `Reminder: ${task.title}`,
-                message: `${task.description || ""}. Due: ${formatDate(task.dueDate)}.`,
-                timestamp: "Just now",
-                read: false,
-                taskId: task._id || task.id
-              };
-              
-              console.log("Created notification:", notification);
-              
-              // Add notification to local storage directly
-              const existingNotifications = JSON.parse(localStorage.getItem('crm_notifications') || '[]');
-              const updatedNotifications = [notification, ...existingNotifications];
-              localStorage.setItem('crm_notifications', JSON.stringify(updatedNotifications));
-              
-              // Dispatch event
-              try {
-                const event = new CustomEvent('taskReminder', {
-                  detail: { notification }
-                });
-                window.dispatchEvent(event);
-                console.log("Event dispatched successfully");
-              } catch (err) {
-                console.error("Error dispatching event:", err);
-              }
-            } else {
-              console.log("Reminder time has not passed yet");
-            }
-          } catch (err) {
-            console.error("Error processing reminder:", err);
-          }
-        }
-        
-        // Handle due dates - clear reminders for past due tasks
-        const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-        if (dueDate && dueDate < now && task.reminderDate) {
-          console.log(`Clearing reminder for past due task: ${task.title}`);
-          updatedTasks[i] = {
-            ...task,
-            reminderDate: "", 
-            reminderTime: "", 
-            reminderNotified: false
-          };
-          hasUpdates = true;
-        }
-      }
-      
-      // Update storage and state if changes were made
-      if (hasUpdates) {
-        console.log("Saving updated tasks to storage");
-        saveTasksToStorage(updatedTasks);
-        setTasks(updatedTasks);
-      }
-    } catch (err) {
-      console.error("Error in checkTaskReminders:", err);
+  // Apply filters (search, status, calendar selection) when dependencies change
+  useEffect(() => {
+    let result = myTasks;
+
+    // If there are calendar selected tasks, filter by those first
+    if (calendarSelectedTasks && calendarSelectedTasks.length > 0) {
+      // Create a set of task IDs for efficient lookup
+      const selectedTaskIds = new Set(
+        calendarSelectedTasks.map(task => task._id || task.id)
+      );
+      result = result.filter(task => 
+        selectedTaskIds.has(task._id || task.id)
+      );
     }
+
+    // Then apply search filter
+    if (searchTerm.trim() !== '') {
+      result = result.filter(task => 
+        task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (task.relatedTo && task.relatedTo.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+
+    // Then apply status filter
+    if (filterStatus !== 'All') {
+      result = result.filter(task => task.status === filterStatus);
+    }
+
+    setFilteredTasks(result);
+  }, [myTasks, searchTerm, filterStatus, calendarSelectedTasks]);
+
+  // Handle task selection from calendar
+  const handleCalendarTaskSelect = (selectedTasks) => {
+    setCalendarSelectedTasks(selectedTasks);
+  };
+
+  // Clear calendar selection
+  const clearCalendarSelection = () => {
+    setCalendarSelectedTasks(null);
   };
 
   // Handle saving a task (create or update)
@@ -304,6 +307,12 @@ const TaskManagement = () => {
       // Update state
       setTasks(updatedTasks);
       
+      // Update myTasks as well
+      if (currentUser) {
+        const assignedTasks = updatedTasks.filter(task => task.assignedTo === currentUser.name);
+        setMyTasks(assignedTasks);
+      }
+      
       // Save to local storage
       saveTasksToStorage(updatedTasks);
       
@@ -311,6 +320,9 @@ const TaskManagement = () => {
       setShowForm(false);
       setCurrentTask(null);
       setError(null);
+      
+      // Clear any calendar selection
+      setCalendarSelectedTasks(null);
     } catch (err) {
       setError('Failed to save task. Please try again.');
       console.error(err);
@@ -346,8 +358,31 @@ const TaskManagement = () => {
         const updatedTasks = tasks.filter(task => (task._id !== taskId && task.id !== taskId));
         setTasks(updatedTasks);
         
+        // Update myTasks as well
+        if (currentUser) {
+          const assignedTasks = updatedTasks.filter(task => task.assignedTo === currentUser.name);
+          setMyTasks(assignedTasks);
+        }
+        
         // Update local storage
         saveTasksToStorage(updatedTasks);
+        
+        // Clear calendar selection if the deleted task was part of it
+        if (calendarSelectedTasks) {
+          const remainingTasks = calendarSelectedTasks.filter(
+            task => task._id !== taskId && task.id !== taskId
+          );
+          
+          if (remainingTasks.length !== calendarSelectedTasks.length) {
+            // If there are still selected tasks, update the selection
+            if (remainingTasks.length > 0) {
+              setCalendarSelectedTasks(remainingTasks);
+            } else {
+              // If all selected tasks were deleted, clear the selection
+              setCalendarSelectedTasks(null);
+            }
+          }
+        }
         
         setError(null);
       } catch (err) {
@@ -364,16 +399,6 @@ const TaskManagement = () => {
     setCurrentTask(task);
     setShowForm(true);
   };
-
-  // Filter tasks based on status and search term
-  const filteredTasks = tasks.filter(task => {
-    const matchesStatus = filterStatus === "All" || task.status === filterStatus;
-    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (task.assignedTo && task.assignedTo.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (task.relatedTo && task.relatedTo.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    return matchesStatus && matchesSearch;
-  });
 
   // Get status badge color
   const getStatusBadgeColor = (status) => {
@@ -409,42 +434,34 @@ const TaskManagement = () => {
   };
 
   return (
-    <div className="w-full h-full">
-      {/* Header and controls */}
+    <div className="w-full h-full p-6">
       <div className="flex flex-col sm:flex-row sm:items-center mb-6 gap-4">
-  {/* <h1 className="text-xl sm:text-2xl font-bold">Task Management</h1> */}
-  
-  <div className="flex flex-col sm:flex-row gap-3">
-    <button
-      onClick={() => {
-        setCurrentTask(null);
-        setShowForm(true);
-      }}
-      className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-    >
-      + Add New Task
-    </button>
-    <button
-      className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-    >
-      Export
-    </button>
-  </div>
-</div>
-      
-      {/* Task form (conditionally shown) */}
-      {showForm && (
-        <div className="mb-6">
-          <TaskForm
-            task={currentTask}
-            onSave={handleSaveTask}
-            onCancel={() => {
-              setShowForm(false);
+        {/* <div className="flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold">My Tasks</h1>
+          {currentUser && (
+            <p className="text-gray-600">Tasks assigned to {currentUser.name}</p>
+          )}
+        </div> */}
+        
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={fetchTasks}
+            disabled={isLoading}
+            className={`px-4 py-2 ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-200 hover:bg-gray-300'} text-gray-700 rounded-md focus:outline-none`}
+          >
+            {isLoading ? 'Refreshing...' : 'Refresh'}
+          </button>
+          <button
+            onClick={() => {
               setCurrentTask(null);
+              setShowForm(true);
             }}
-          />
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none"
+          >
+            + Add Task
+          </button>
         </div>
-      )}
+      </div>
       
       {/* Error message */}
       {error && (
@@ -478,25 +495,37 @@ const TaskManagement = () => {
               <option value="Completed">Completed</option>
             </select>
           </div>
-          
-          <div className="w-full sm:w-auto">
-            <button
-              onClick={fetchTasks}
-              className="w-full px-4 py-2 border border-gray-300 bg-white rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Refresh
-            </button>
-          </div>
         </div>
       </div>
       
-      {/* Tasks list */}
+      {/* Calendar view */}
+      <TaskCalendar 
+        tasks={myTasks} 
+        onTaskClick={handleCalendarTaskSelect} 
+      />
+      
+      {/* Tasks list with calendar filter indicator */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden w-full">
+        {/* Calendar filter indicator */}
+        {calendarSelectedTasks && (
+          <div className="bg-indigo-50 p-3 border-b border-indigo-100 flex justify-between items-center">
+            <span className="text-indigo-700">
+              <span className="font-medium">Filtered by calendar:</span> {calendarSelectedTasks.length} task(s) on {formatDate(new Date(calendarSelectedTasks[0].dueDate))}
+            </span>
+            <button 
+              onClick={clearCalendarSelection}
+              className="text-indigo-600 hover:text-indigo-800"
+            >
+              Clear filter
+            </button>
+          </div>
+        )}
+      
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading tasks...</div>
         ) : filteredTasks.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            No tasks found. {searchTerm || filterStatus !== "All" ? "Try adjusting your filters." : "Create a new task to get started."}
+            No tasks assigned to you found. {searchTerm || filterStatus !== "All" || calendarSelectedTasks ? "Try adjusting your filters." : ""}
           </div>
         ) : (
           <div className="w-full">
@@ -505,9 +534,6 @@ const TaskManagement = () => {
                 <tr>
                   <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Task Info
-                  </th>
-                  <th scope="col" className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Assigned To
                   </th>
                   <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status/Priority
@@ -525,18 +551,12 @@ const TaskManagement = () => {
                   <tr key={task._id || task.id} className="hover:bg-gray-50">
                     <td className="px-4 sm:px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                      <div className="text-sm text-gray-500">{task.relatedTo}</div>
-                      {/* Mobile-only assigned to */}
-                      <div className="sm:hidden text-xs text-gray-500 mt-1">
-                        Assigned: {task.assignedTo}
-                      </div>
+                      <div className="text-sm text-gray-500">{task.relatedTo || "N/A"}</div>
+                      <div className="text-sm text-gray-500 mt-1">{task.description || ""}</div>
                       {/* Mobile-only due date */}
                       <div className="md:hidden text-xs text-gray-500 mt-1">
                         Due: {formatDate(task.dueDate)}
                       </div>
-                    </td>
-                    <td className="hidden sm:table-cell px-6 py-4">
-                      <div className="text-sm text-gray-900">{task.assignedTo}</div>
                     </td>
                     <td className="px-4 sm:px-6 py-4">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(task.status)}`}>
@@ -574,8 +594,27 @@ const TaskManagement = () => {
           </div>
         )}
       </div>
+      
+      {/* Task form (conditionally shown) */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold mb-4">{currentTask ? "Edit Task" : "Create Task"}</h2>
+              <TaskForm
+                task={currentTask}
+                onSave={handleSaveTask}
+                onCancel={() => {
+                  setShowForm(false);
+                  setCurrentTask(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default TaskManagement;
+export default MyTasks;

@@ -544,26 +544,24 @@ const ContactManagement = () => {
     );
   }
 
-  // Main contacts view for authenticated users
+  // UPDATED MAIN RETURN STATEMENT WITH IMPROVED LAYOUT
   return (
-    <div className="w-full min-h-screen flex flex-col bg-gray-50">
-      {/* Main content area */}
-      <div className="flex-grow p-4 sm:p-6">
-        {/* Title and Add Button */}
+    <div className="w-full h-full flex flex-col bg-gray-50 overflow-hidden">
+      {/* Main content area - full width with proper spacing */}
+      <div className="w-full h-full p-4 sm:p-6 flex-1 overflow-auto">
+        {/* Title and Add Button section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <h2 className="text-xl sm:text-2xl font-bold">Business Contacts</h2>
-          <div className="flex gap-3">
+          <div className="flex gap-3 w-full sm:w-auto">
             <button
               onClick={handleAddNewContact}
-              className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
             >
               + Add Contact
             </button>
             <button
-              onClick={handleLogout}
-              className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
             >
-              Logout
+              Export
             </button>
           </div>
         </div>
@@ -583,9 +581,9 @@ const ContactManagement = () => {
           </div>
         )}
         
-        {/* Search Bar - Responsive */}
-        <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
-          <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+        {/* Search Bar - Full width with proper spacing */}
+        <div className="bg-white p-4 rounded-lg shadow-sm mb-6 w-full">
+          <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full">
             <div className="w-full">
               <input
                 type="text"
@@ -597,7 +595,7 @@ const ContactManagement = () => {
             </div>
             <button
               onClick={fetchContacts}
-              className="w-full sm:w-auto px-4 py-2 border border-gray-300 bg-white rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="w-full sm:w-auto whitespace-nowrap px-4 py-2 border border-gray-300 bg-white rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Refresh
             </button>
@@ -611,9 +609,9 @@ const ContactManagement = () => {
           </div>
         )}
         
-        {/* Contacts Table - Updated for mobile responsiveness */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+        {/* Contacts Table - Full width with improved responsiveness */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden w-full">
+          <div className="overflow-x-auto w-full">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr className="bg-gray-50">

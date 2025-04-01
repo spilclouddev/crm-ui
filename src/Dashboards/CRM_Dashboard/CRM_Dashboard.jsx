@@ -1,48 +1,63 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+// Import logo image
+import logoImage from "../../assets/spil.png"; 
+
 // Import components
 import LeadsAndOpportunities from "../LeadsAndOpportunities";
 import TaskManagement from "../TaskManagement";
 import ContactManagement from "../ContactManagement";
+import MyTasks from "../MyTasks";
 import NotificationsPopup from "../CRM_Dashboard/notificationPopup";
+import ProfileAvatar from "../CRM_Dashboard/Profile";
+import Dashboard from "../Dashboard"; // Import the new Dashboard component
 import { Menu, X, Bell } from "lucide-react";
 
 // Local storage key for notifications
 const NOTIFICATIONS_STORAGE_KEY = 'crm_notifications';
-const API_BASE_URL = "http://localhost:5000/api"; // Adjust this to match your backend URL
+const API_BASE_URL = "http://localhost:5000/api"; 
 
 const sections = [
+  { id: "dashboard", name: "Dashboard" }, // Moved dashboard to the top
   { id: "contact", name: "Contact Management" },
-  { id: "leads", name: "Leads & Opportunities Tracking" },
+  { id: "leads", name: "Leads & Opportunities" },
   { id: "tasks", name: "Task Management" },
-  { id: "reporting", name: "Dashboard" },
-  { id: "logout", name: "Log Out" }
+  { id: "my tasks", name: "My Tasks" }
 ];
 
+// Sidebar component remains the same
 const Sidebar = ({ onSelect, selectedSection, onLogout, isMobileMenuOpen, setMobileMenuOpen }) => {
   return (
     <>
       {/* Desktop Sidebar - Hidden on mobile */}
-      <div className="hidden md:block w-64 bg-gray-800 h-screen fixed left-0 top-0 p-4 text-white overflow-auto">
-        <h2 className="text-lg font-semibold mb-4">SPIL CRM</h2>
-        {sections.map((section) => (
-          <button
-            key={section.id}
-            className={`block w-full text-left p-2 mb-2 ${
-              selectedSection.id === section.id ? 'bg-gray-600' : 'bg-gray-700'
-            } hover:bg-gray-600 rounded`}
-            onClick={() => {
-              if (section.id === "logout") {
-                onLogout();
-              } else {
+      <div className="hidden md:block w-64 bg-gray-900 h-screen fixed left-0 top-0 p-4 text-white overflow-auto">
+        {/* Logo Image */}
+        <div className="flex flex-col items-center mb-6">
+          <img 
+            src={logoImage} 
+            alt="SPIL Logo" 
+            className="w-40 h-auto mb-2"
+          />
+          <h1 className="text-lg font-semibold">C R M</h1>
+        </div>
+        
+        {/* Navigation buttons - now positioned lower */}
+        <div className="mt-6">
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              className={`block w-full text-left p-2 mb-2 ${
+                selectedSection.id === section.id ? 'bg-gray-600' : 'bg-gray-700'
+              } hover:bg-gray-600 rounded`}
+              onClick={() => {
                 onSelect(section);
-              }
-            }}
-          >
-            {section.name}
-          </button>
-        ))}
+              }}
+            >
+              {section.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Mobile Sidebar - Slides in from left */}
@@ -55,7 +70,7 @@ const Sidebar = ({ onSelect, selectedSection, onLogout, isMobileMenuOpen, setMob
           ></div>
           
           {/* Mobile menu */}
-          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-gray-800 text-white shadow-xl">
+          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-gray-900 text-white shadow-xl">
             <div className="absolute top-0 right-0 -mr-12 pt-2">
               <button
                 className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
@@ -65,11 +80,18 @@ const Sidebar = ({ onSelect, selectedSection, onLogout, isMobileMenuOpen, setMob
               </button>
             </div>
             
-            <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-              <div className="flex-shrink-0 flex items-center px-4">
-                <h2 className="text-lg font-semibold">Spil Labs</h2>
+            <div className="flex-1 flex flex-col pt-7 pb-10 overflow-y-auto">
+              {/* Mobile Logo */}
+              <div className="flex-shrink-0 flex flex-col items-center px-6 mb-9">
+                <img 
+                  src={logoImage} 
+                  alt="SPIL Logo" 
+                  className="w-44 h-auto mb-2"
+                />
+                <h2 className="text-lg font-semibold">SPIL CRM</h2>
               </div>
-              <nav className="mt-5 flex-1 px-2 space-y-1">
+              
+              <nav className="mt-6 flex-1 px-2 space-y-1">
                 {sections.map((section) => (
                   <button
                     key={section.id}
@@ -77,12 +99,8 @@ const Sidebar = ({ onSelect, selectedSection, onLogout, isMobileMenuOpen, setMob
                       selectedSection.id === section.id ? 'bg-gray-600' : 'bg-gray-700'
                     } hover:bg-gray-600 rounded`}
                     onClick={() => {
-                      if (section.id === "logout") {
-                        onLogout();
-                      } else {
-                        onSelect(section);
-                        setMobileMenuOpen(false);
-                      }
+                      onSelect(section);
+                      setMobileMenuOpen(false);
                     }}
                   >
                     {section.name}
@@ -97,6 +115,7 @@ const Sidebar = ({ onSelect, selectedSection, onLogout, isMobileMenuOpen, setMob
   );
 };
 
+// TopBar component remains the same
 const TopBar = ({ title, setMobileMenuOpen, toggleNotifications, unreadCount }) => {
   return (
     <div className="fixed top-0 left-0 right-0 md:left-64 bg-gray-900 text-white p-4 flex items-center z-10">
@@ -108,39 +127,64 @@ const TopBar = ({ title, setMobileMenuOpen, toggleNotifications, unreadCount }) 
         <Menu className="h-6 w-6" />
       </button>
       
-      {/* Title */}
-      <div className="flex-1 text-center md:text-left text-lg font-semibold">
-        {title || "Spil Labs"}
+      {/* Left spacer to help with centering */}
+      <div className="flex-1 md:flex md:justify-end"></div>
+      
+      {/* Title - centered and styled */}
+      <div className="absolute left-1/2 transform -translate-x-1/2 text-center md:static md:transform-none">
+        <h1 className="text-2xl font-bold tracking-wider text-white">
+          {title || "Spil Labs"}
+        </h1>
       </div>
 
-      {/* Notification Bell Icon */}
-      <button 
-        className="relative text-white p-2 rounded-full hover:bg-gray-700 focus:outline-none"
-        onClick={toggleNotifications}
-      >
-        <Bell className="h-6 w-6" />
-        {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-500 rounded-full">
-            {unreadCount}
-          </span>
-        )}
-      </button>
+      {/* Right side elements container */}
+      <div className="flex-1 flex items-center justify-end">
+        {/* Notification Bell Icon */}
+        <button 
+          className="relative text-white p-2 rounded-full hover:bg-gray-700 focus:outline-none"
+          onClick={toggleNotifications}
+        >
+          <Bell className="h-6 w-6" />
+          {unreadCount > 0 && (
+            <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-500 rounded-full">
+              {unreadCount}
+            </span>
+          )}
+        </button>
+        
+        {/* Profile Avatar */}
+        <ProfileAvatar />
+      </div>
     </div>
   );
 };
 
-// Main content renderer that switches between different components based on selection
+// Updated Content component to include Dashboard
 const Content = ({ selectedSection }) => {
+  // For tasks tab, we track when it was selected to trigger a refresh
+  const [myTasksKey, setMyTasksKey] = useState(1);
+  
+  // When selectedSection changes to "my tasks", update the key
+  useEffect(() => {
+    if (selectedSection.id === "my tasks") {
+      setMyTasksKey(prevKey => prevKey + 1);
+    }
+  }, [selectedSection]);
+  
   switch(selectedSection.id) {
+    case "dashboard":
+      return <Dashboard />; // Return the Dashboard component when dashboard is selected
     case "contact":
       return <ContactManagement />;
     case "leads":
       return <LeadsAndOpportunities />;
     case "tasks":
       return <TaskManagement />;
+    case "my tasks":
+      return <MyTasks key={myTasksKey} />;
     default:
       return (
-        <div className="p-6">
+        <div className="w-full h-full bg-gray-50 px-4 py-6">
           <h1 className="text-2xl font-bold mb-4">{selectedSection.name}</h1>
           <p>Content for {selectedSection.name} will be displayed here.</p>
         </div>
@@ -148,8 +192,10 @@ const Content = ({ selectedSection }) => {
   }
 };
 
+// Main CRM_Dashboard component
 const CRM_Dashboard = () => {
   const navigate = useNavigate();
+  // Set the default selected section to dashboard
   const [selectedSection, setSelectedSection] = useState(sections[0]);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   
@@ -274,7 +320,7 @@ const CRM_Dashboard = () => {
           if (!token) return;
           
           try {
-            // Get user profile to know current username (this is just an example - adjust to how your app gets current user)
+            // Get user profile to know current username
             const userResponse = await fetch(`${API_BASE_URL}/auth/me`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -292,9 +338,6 @@ const CRM_Dashboard = () => {
                 // If we already have notifications from API, don't override with storage
                 if (prev.length > 0) return prev;
                 
-                // Your stored notifications might not have user info - if not, you'll need to adapt this
-                // This assumes each notification has some assigned user information
-                // If your stored notifications don't have this, you may need to fetch fresh ones from API
                 return parsed;
               });
               
@@ -395,7 +438,7 @@ const CRM_Dashboard = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50" >
       <Sidebar 
         onSelect={setSelectedSection} 
         selectedSection={selectedSection}
@@ -403,7 +446,7 @@ const CRM_Dashboard = () => {
         isMobileMenuOpen={isMobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
       />
-      <div className="flex flex-col w-full md:ml-64">
+      <div className="flex flex-col w-full md:ml-64 lg:ml-[10%] lg:mr-[-10%]">        
         <TopBar 
           title={selectedSection.name} 
           setMobileMenuOpen={setMobileMenuOpen}
@@ -417,7 +460,7 @@ const CRM_Dashboard = () => {
           markAsRead={markAsRead}
           markAllAsRead={markAllAsRead}
         />
-        <div className="mt-16 px-4 py-6 sm:px-6 lg:px-8 w-full">
+        <div className="mt-16 w-full h-full">
           <Content selectedSection={selectedSection} />
         </div>
       </div>
