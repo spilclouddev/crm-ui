@@ -19,13 +19,13 @@ const TaskManagement = () => {
 
   // Function to get auth headers
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (!token) {
       throw new Error("Authentication required");
     }
     return {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     };
   };
 
@@ -52,20 +52,20 @@ const TaskManagement = () => {
 
       // Try API first
       const response = await fetch(`${API_URL}/tasks`, { headers });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       setTasks(data);
-      
+
       // Save to local storage
       saveTasksToStorage(data);
       setError(null);
     } catch (err) {
       console.error("API fetch error:", err);
-      
+
       // If API fails, try to load from local storage
       try {
         const localTasks = loadTasksFromStorage();
@@ -74,10 +74,10 @@ const TaskManagement = () => {
           setTasks(localTasks);
           setError("Using cached data. Reconnect to update.");
         } else {
-          setError('Failed to fetch tasks. Please check your connection.');
+          setError("Failed to fetch tasks. Please check your connection.");
         }
       } catch (storageErr) {
-        setError('Failed to fetch tasks. Please try again later.');
+        setError("Failed to fetch tasks. Please try again later.");
         console.error(storageErr);
       }
     } finally {
@@ -93,11 +93,14 @@ const TaskManagement = () => {
     // Check for reminders immediately on mount
     console.log("Running initial reminder check...");
     setTimeout(checkTaskReminders, 1000);
-    
+
     // Set up interval to check for due reminders
     console.log("Setting up reminder check interval...");
-    const reminderInterval = setInterval(checkTaskReminders, REMINDER_CHECK_INTERVAL);
-    
+    const reminderInterval = setInterval(
+      checkTaskReminders,
+      REMINDER_CHECK_INTERVAL
+    );
+
     // Clean up interval on unmount
     return () => {
       console.log("Cleaning up reminder interval");
@@ -110,19 +113,19 @@ const TaskManagement = () => {
     console.log("Checking for task reminders...");
     try {
       // First try to get current user info to check only for tasks assigned to this user
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
         console.log("No authentication token, skipping reminder check");
         return;
       }
-      
+
       // Try to get current user to only create notifications for tasks assigned to them
       let currentUsername = null;
       try {
         const userResponse = await fetch(`${API_URL}/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
-        
+
         if (userResponse.ok) {
           const userData = await userResponse.json();
           currentUsername = userData.name;
@@ -132,66 +135,80 @@ const TaskManagement = () => {
         console.error("Error fetching current user:", err);
         // Continue without username - we'll check all local tasks
       }
-      
+
       const allTasks = loadTasksFromStorage();
       console.log(`Checking ${allTasks.length} tasks for reminders`);
-      
+
       const now = new Date();
-      
+
       let updatedTasks = [...allTasks];
       let hasUpdates = false;
-      
+
       // Process each task
       for (let i = 0; i < updatedTasks.length; i++) {
         const task = updatedTasks[i];
-        
+
         // Skip tasks not assigned to current user (for notifications only)
         if (currentUsername && task.assignedTo !== currentUsername) {
-          console.log(`Skipping notification for task not assigned to current user: ${task.title}`);
+          console.log(
+            `Skipping notification for task not assigned to current user: ${task.title}`
+          );
           continue;
         }
-        
+
         // Check for reminders
         if (task.reminderDate && task.reminderTime && !task.reminderNotified) {
           console.log(`Checking reminder for task: ${task.title}`);
-          
+
           try {
             // Combine the date and time strings
-            const reminderDateTime = new Date(`${task.reminderDate}T${task.reminderTime}`);
-            
+            const reminderDateTime = new Date(
+              `${task.reminderDate}T${task.reminderTime}`
+            );
+
             // Check if reminder time has passed
             if (!isNaN(reminderDateTime.getTime()) && reminderDateTime <= now) {
               console.log("Reminder time has passed! Creating notification...");
-              
+
               // Mark as notified
               updatedTasks[i] = {
                 ...task,
-                reminderNotified: true
+                reminderNotified: true,
               };
-              
+
               hasUpdates = true;
-              
+
               // Create notification
               const notification = {
                 id: `task-reminder-${task._id || task.id || Date.now()}`,
                 title: `Reminder: ${task.title}`,
-                message: `${task.description || ""}. Due: ${formatDate(task.dueDate)}.`,
+                message: `${task.description || ""}. Due: ${formatDate(
+                  task.dueDate
+                )}.`,
                 timestamp: "Just now",
                 read: false,
-                taskId: task._id || task.id
+                taskId: task._id || task.id,
               };
-              
+
               console.log("Created notification:", notification);
-              
+
               // Add notification to local storage directly
-              const existingNotifications = JSON.parse(localStorage.getItem('crm_notifications') || '[]');
-              const updatedNotifications = [notification, ...existingNotifications];
-              localStorage.setItem('crm_notifications', JSON.stringify(updatedNotifications));
-              
+              const existingNotifications = JSON.parse(
+                localStorage.getItem("crm_notifications") || "[]"
+              );
+              const updatedNotifications = [
+                notification,
+                ...existingNotifications,
+              ];
+              localStorage.setItem(
+                "crm_notifications",
+                JSON.stringify(updatedNotifications)
+              );
+
               // Dispatch event
               try {
-                const event = new CustomEvent('taskReminder', {
-                  detail: { notification }
+                const event = new CustomEvent("taskReminder", {
+                  detail: { notification },
                 });
                 window.dispatchEvent(event);
                 console.log("Event dispatched successfully");
@@ -205,21 +222,21 @@ const TaskManagement = () => {
             console.error("Error processing reminder:", err);
           }
         }
-        
+
         // Handle due dates - clear reminders for past due tasks
         const dueDate = task.dueDate ? new Date(task.dueDate) : null;
         if (dueDate && dueDate < now && task.reminderDate) {
           console.log(`Clearing reminder for past due task: ${task.title}`);
           updatedTasks[i] = {
             ...task,
-            reminderDate: "", 
-            reminderTime: "", 
-            reminderNotified: false
+            reminderDate: "",
+            reminderTime: "",
+            reminderNotified: false,
           };
           hasUpdates = true;
         }
       }
-      
+
       // Update storage and state if changes were made
       if (hasUpdates) {
         console.log("Saving updated tasks to storage");
@@ -234,13 +251,13 @@ const TaskManagement = () => {
   // Handle saving a task (create or update)
   const handleSaveTask = async (taskData) => {
     setIsLoading(true);
-    
+
     try {
       // Add creation date if it's a new task
       if (!currentTask) {
         taskData.createdAt = new Date().toISOString();
       }
-      
+
       // Generate a local ID if API fails
       if (!taskData._id && !taskData.id) {
         taskData.id = `local-${Date.now()}`;
@@ -248,71 +265,70 @@ const TaskManagement = () => {
 
       let updatedTasks = [];
       const headers = getAuthHeaders();
-      
+
       try {
         if (currentTask) {
           // Try to update existing task via API
-          const response = await fetch(
-            `${API_URL}/tasks/${currentTask._id}`,
-            {
-              method: 'PUT',
-              headers,
-              body: JSON.stringify(taskData)
-            }
-          );
-          
+          const response = await fetch(`${API_URL}/tasks/${currentTask._id}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(taskData),
+          });
+
           if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
           }
-          
+
           const updatedTask = await response.json();
-          
+
           // Update task in state
-          updatedTasks = tasks.map(task => 
+          updatedTasks = tasks.map((task) =>
             task._id === currentTask._id ? updatedTask : task
           );
         } else {
           // Try to create new task via API
           const response = await fetch(`${API_URL}/tasks`, {
-            method: 'POST',
+            method: "POST",
             headers,
-            body: JSON.stringify(taskData)
+            body: JSON.stringify(taskData),
           });
-          
+
           if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
           }
-          
+
           const newTask = await response.json();
           updatedTasks = [...tasks, newTask];
         }
       } catch (apiErr) {
         console.error("API error, falling back to local storage:", apiErr);
-        
+
         // Fall back to local storage if API fails
         if (currentTask) {
           // Update task in local array
-          updatedTasks = tasks.map(task => 
-            (task._id === currentTask._id || task.id === currentTask.id) ? taskData : task
+          updatedTasks = tasks.map((task) =>
+            task._id === currentTask._id || task.id === currentTask.id
+              ? taskData
+              : task
           );
         } else {
           // Add new task to local array
           updatedTasks = [...tasks, taskData];
         }
       }
-      
+
       // Update state
       setTasks(updatedTasks);
-      
+
       // Save to local storage
       saveTasksToStorage(updatedTasks);
-      
+
       // Reset form state
       setShowForm(false);
       setCurrentTask(null);
       setError(null);
     } catch (err) {
-      setError('Failed to save task. Please try again.');
+      setError("Failed to save task. Please try again.");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -321,37 +337,42 @@ const TaskManagement = () => {
 
   // Handle deleting a task
   const handleDeleteTask = async (taskId) => {
-    if (window.confirm('Are you sure you want to delete this task?')) {
+    if (window.confirm("Are you sure you want to delete this task?")) {
       setIsLoading(true);
-      
+
       try {
         const headers = getAuthHeaders();
-        
+
         try {
           // Try to delete from API
           const response = await fetch(`${API_URL}/tasks/${taskId}`, {
-            method: 'DELETE',
-            headers
+            method: "DELETE",
+            headers,
           });
-          
+
           if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
           }
         } catch (apiErr) {
-          console.error("API delete failed, falling back to local storage:", apiErr);
+          console.error(
+            "API delete failed, falling back to local storage:",
+            apiErr
+          );
           // Continue with local deletion even if API fails
         }
-        
+
         // Remove task from state
-        const updatedTasks = tasks.filter(task => (task._id !== taskId && task.id !== taskId));
+        const updatedTasks = tasks.filter(
+          (task) => task._id !== taskId && task.id !== taskId
+        );
         setTasks(updatedTasks);
-        
+
         // Update local storage
         saveTasksToStorage(updatedTasks);
-        
+
         setError(null);
       } catch (err) {
-        setError('Failed to delete task. Please try again.');
+        setError("Failed to delete task. Please try again.");
         console.error(err);
       } finally {
         setIsLoading(false);
@@ -366,32 +387,44 @@ const TaskManagement = () => {
   };
 
   // Filter tasks based on status and search term
-  const filteredTasks = tasks.filter(task => {
-    const matchesStatus = filterStatus === "All" || task.status === filterStatus;
-    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (task.assignedTo && task.assignedTo.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (task.relatedTo && task.relatedTo.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+  const filteredTasks = tasks.filter((task) => {
+    const matchesStatus =
+      filterStatus === "All" || task.status === filterStatus;
+    const matchesSearch =
+      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (task.assignedTo &&
+        task.assignedTo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (task.relatedTo &&
+        task.relatedTo.toLowerCase().includes(searchTerm.toLowerCase()));
+
     return matchesStatus && matchesSearch;
   });
 
   // Get status badge color
   const getStatusBadgeColor = (status) => {
-    switch(status) {
-      case "Not Started": return "bg-yellow-100 text-yellow-800";
-      case "In Progress": return "bg-blue-100 text-blue-800";
-      case "Completed": return "bg-green-100 text-green-800";
-      default: return "bg-gray-100 text-gray-800";
+    switch (status) {
+      case "Not Started":
+        return "bg-yellow-100 text-yellow-800";
+      case "In Progress":
+        return "bg-blue-100 text-blue-800";
+      case "Completed":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   // Get priority badge color
   const getPriorityBadgeColor = (priority) => {
-    switch(priority) {
-      case "High": return "bg-red-100 text-red-800";
-      case "Medium": return "bg-orange-100 text-orange-800";
-      case "Low": return "bg-green-100 text-green-800";
-      default: return "bg-gray-100 text-gray-800";
+    switch (priority) {
+      case "High":
+        return "bg-red-100 text-red-800";
+      case "Medium":
+        return "bg-orange-100 text-orange-800";
+      case "Low":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -445,14 +478,14 @@ const TaskManagement = () => {
           />
         </div>
       )}
-      
+
       {/* Error message */}
       {error && (
         <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
           {error}
         </div>
       )}
-      
+
       {/* Filters & search */}
       <div className="bg-white p-4 rounded-lg shadow-md mb-6">
         <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:space-x-4">
@@ -465,7 +498,7 @@ const TaskManagement = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
-          
+
           <div className="w-full sm:w-auto">
             <select
               value={filterStatus}
@@ -478,7 +511,7 @@ const TaskManagement = () => {
               <option value="Completed">Completed</option>
             </select>
           </div>
-          
+
           <div className="w-full sm:w-auto">
             <button
               onClick={fetchTasks}
@@ -489,33 +522,51 @@ const TaskManagement = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Tasks list */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden w-full">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading tasks...</div>
         ) : filteredTasks.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            No tasks found. {searchTerm || filterStatus !== "All" ? "Try adjusting your filters." : "Create a new task to get started."}
+            No tasks found.{" "}
+            {searchTerm || filterStatus !== "All"
+              ? "Try adjusting your filters."
+              : "Create a new task to get started."}
           </div>
         ) : (
           <div className="w-full">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Task Info
                   </th>
-                  <th scope="col" className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Assigned To
                   </th>
-                  <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Status/Priority
                   </th>
-                  <th scope="col" className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Due Date
                   </th>
-                  <th scope="col" className="px-4 sm:px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right sm:text-center">
+                  <th
+                    scope="col"
+                    className="px-4 sm:px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right sm:text-center"
+                  >
                     Actions
                   </th>
                 </tr>
@@ -524,8 +575,12 @@ const TaskManagement = () => {
                 {filteredTasks.map((task) => (
                   <tr key={task._id || task.id} className="hover:bg-gray-50">
                     <td className="px-4 sm:px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                      <div className="text-sm text-gray-500">{task.relatedTo}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {task.title}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {task.relatedTo}
+                      </div>
                       {/* Mobile-only assigned to */}
                       <div className="sm:hidden text-xs text-gray-500 mt-1">
                         Assigned: {task.assignedTo}
@@ -536,14 +591,24 @@ const TaskManagement = () => {
                       </div>
                     </td>
                     <td className="hidden sm:table-cell px-6 py-4">
-                      <div className="text-sm text-gray-900">{task.assignedTo}</div>
+                      <div className="text-sm text-gray-900">
+                        {task.assignedTo}
+                      </div>
                     </td>
                     <td className="px-4 sm:px-6 py-4">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(task.status)}`}>
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(
+                          task.status
+                        )}`}
+                      >
                         {task.status}
                       </span>
                       <div className="mt-2">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityBadgeColor(task.priority)}`}>
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityBadgeColor(
+                            task.priority
+                          )}`}
+                        >
                           {task.priority}
                         </span>
                       </div>
