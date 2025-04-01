@@ -52,8 +52,8 @@ const ContactManagement = () => {
   }, [showForm, showDetails]);
 
   // API base URL - ensure this matches your backend deployment
-  const API_URL = "http://localhost:5000/api/contacts";
-  const AUTH_URL = "http://localhost:5000/api/auth";
+  const API_URL = "https://crm-be.fly.dev/api/contacts";
+  const AUTH_URL = "https://crm-be.fly.dev/api/auth";
 
   // Check if user is authenticated on mount
   useEffect(() => {

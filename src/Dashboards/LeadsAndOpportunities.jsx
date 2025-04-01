@@ -3,7 +3,7 @@ import LeadForm, { LEAD_STAGES, CURRENCIES } from "../Dashboards/Leads and Oppor
 import LeadDetailsModal from "../Dashboards/Leads and Opportunity/leadDetailsPopup"; // Import the new modal component
 
 // API base URL - change this to match your backend
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://crm-be.fly.dev/api";
 
 const LeadsAndOpportunities = () => {
   const [leads, setLeads] = useState([]);

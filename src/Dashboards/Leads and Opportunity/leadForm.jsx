@@ -21,7 +21,7 @@ export const CURRENCIES = [
 import React, { useState, useEffect } from "react";
 
 // API base URL - change this to match your backend
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://crm-be.fly.dev/api";
 
 const LeadForm = ({ lead, onSave, onCancel }) => {
   const [formData, setFormData] = useState(
