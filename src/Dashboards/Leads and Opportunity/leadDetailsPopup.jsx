@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 
 // API base URL - change this to match your backend
-const API_URL = "https://crm-be.fly.dev/api";
+const API_URL = "http://localhost:5000/api";
 
 // Component to display full lead details in a modal popup with audit log
 const LeadDetailsModal = ({ lead, onClose }) => {
@@ -230,6 +230,18 @@ const LeadDetailsModal = ({ lead, onClose }) => {
             field: "leadOwner",
             oldValue: "Alex Johnson",
             newValue: lead.leadOwner || "John Smith"
+          },
+          // Add a sample change for the country field
+          {
+            field: "country",
+            oldValue: "Australia", 
+            newValue: lead.country || "Canada"
+          },
+          // Add a sample change for the nextStep field
+          {
+            field: "nextStep",
+            oldValue: "Send follow-up email", 
+            newValue: lead.nextStep || "Schedule a demo"
           }
         ]
       }
@@ -281,6 +293,8 @@ const LeadDetailsModal = ({ lead, onClose }) => {
       case "value": return "Value";
       case "currencyCode": return "Currency";
       case "notes": return "Notes";
+      case "nextStep": return "Next Step";
+      case "country": return "Country";
       case "leadOwner": return "Lead Owner";
       case "status": return "Status"; // For handling deletion logs
       default: return fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
@@ -289,7 +303,7 @@ const LeadDetailsModal = ({ lead, onClose }) => {
 
   // Format currency value for display
   const formatCurrencyValue = (value, currencyCode = 'AUD') => {
-    if (!value) return "—";
+    if (value === undefined || value === null) return "—";
     
     // Define currency formatter
     const formatter = new Intl.NumberFormat('en-AU', {
@@ -385,7 +399,11 @@ const LeadDetailsModal = ({ lead, onClose }) => {
                 </div>
                 <div>
                   <span className="text-sm text-gray-500">Contact:</span>
-                  <p className="font-medium">{lead.contactPerson?.name || 'N/A'}</p>
+                  <p className="font-medium">{lead.contactPerson?.name || lead.contactPersonName || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-500">Country:</span>
+                  <p className="font-medium">{lead.country || 'Australia'}</p>
                 </div>
                 <div>
                   <span className="text-sm text-gray-500">Lead Owner:</span>
@@ -441,6 +459,18 @@ const LeadDetailsModal = ({ lead, onClose }) => {
                 <p className="whitespace-pre-wrap">{lead.notes}</p>
               ) : (
                 <p className="text-gray-400 italic">No notes available for this lead.</p>
+              )}
+            </div>
+          </div>
+          
+          {/* Next Step section */}
+          <div className="mt-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Next Step</h3>
+            <div className="bg-gray-50 p-4 rounded-md min-h-[100px]">
+              {lead.nextStep ? (
+                <p className="whitespace-pre-wrap">{lead.nextStep}</p>
+              ) : (
+                <p className="text-gray-400 italic">No next steps defined for this lead.</p>
               )}
             </div>
           </div>
