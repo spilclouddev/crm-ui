@@ -31,7 +31,7 @@ export const CURRENCIES = [
 ];
 
 // API base URL - change this to match your backend
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://crm-be.fly.dev/api";
 
 const LeadForm = ({ lead, onSave, onCancel }) => {
   // Initialize form data with lead data or defaults
