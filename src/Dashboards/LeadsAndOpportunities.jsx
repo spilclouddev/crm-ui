@@ -3,7 +3,7 @@ import LeadForm from "../Dashboards/Leads and Opportunity/leadForm"; // Import t
 import LeadDetailsModal from "../Dashboards/Leads and Opportunity/leadDetailsPopup"; // Import the modal component
 
 // API base URL - change this to match your backend
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://crm-be.fly.dev/api";
 
 // Define lead stages directly in this component for filtering
 const LEAD_STAGES = [
