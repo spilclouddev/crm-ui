@@ -24,7 +24,7 @@ const ProfileAvatar = () => {
           return;
         }
         
-        const response = await fetch('https://crm-be.fly.dev/api/auth/me', {
+        const response = await fetch('http://localhost:5000/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`
           }

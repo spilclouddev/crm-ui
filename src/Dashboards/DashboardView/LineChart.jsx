@@ -11,7 +11,7 @@ const LineChart = () => {
       text: ""  // Remove title from chart as it's already in the panel header
     },
     axisY: {
-      title: "Bounce Rate",
+      title: "Rate",
       suffix: "%",
       minimum: 50,
       maximum: 70

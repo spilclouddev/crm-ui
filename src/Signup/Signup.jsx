@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -70,9 +70,10 @@ const Signup = () => {
     
     if (validateForm()) {
       setIsLoading(true);
+      //http://localhost:5000/api/auth/signup
       
       try {
-        const response = await fetch("https://crm-be.fly.dev/api/auth/signup", {
+        const response = await fetch("http://localhost:5000/api/auth/signup", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -97,7 +98,7 @@ const Signup = () => {
           });
           // Redirect to login after 2 seconds
           setTimeout(() => {
-            navigate("/");
+            navigate("/login");
           }, 2000);
         } else {
           setSignupError(data.message || "Registration failed. Please try again.");
@@ -214,9 +215,11 @@ const Signup = () => {
           </button>
         </form>
         
+                  {/* Social login section removed to match updated login component */}
+        
         <p className="text-xs text-center sm:px-6 text-gray-400">
           Already have an account?
-          <Link to="/" className="underline text-gray-100 ml-1">Sign in</Link>
+          <a href="/" className="underline text-gray-100 ml-1">Sign in</a>
         </p>
       </div>
     </div>
