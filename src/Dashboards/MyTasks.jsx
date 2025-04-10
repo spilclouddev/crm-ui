@@ -4,7 +4,7 @@ import TaskForm from "../Dashboards/Task management/taskForm";
 import TaskCalendar from "../Dashboards/MyTasks/TaskCalendar"; // Import the calendar component
 
 // API URL - adjust according to your backend setup
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://crm-be.fly.dev/api";
 
 // Local storage keys
 const TASKS_STORAGE_KEY = "crm_tasks";

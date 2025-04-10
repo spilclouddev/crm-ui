@@ -7,7 +7,7 @@ import DoughnutChart from '../Dashboards/DashboardView/DoughnutChart';
 import FunnelChart from '../Dashboards/DashboardView/FunnelChart';
 
 // API base URL - ensure this matches your backend deployment
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://crm-be.fly.dev/api";
 
 // Mock data for development - we'll use this as a fallback when data can't be fetched
 const MOCK_DATA = {

@@ -16,7 +16,7 @@ import { Menu, X, Bell } from "lucide-react";
 
 // Local storage key for notifications
 const NOTIFICATIONS_STORAGE_KEY = 'crm_notifications';
-const API_BASE_URL = "http://localhost:5000/api"; 
+const API_BASE_URL = "https://crm-be.fly.dev/api"; 
 //
 
 const sections = [
