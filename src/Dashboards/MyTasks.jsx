@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import * as XLSX from 'xlsx';
 import TaskForm from "../Dashboards/Task management/taskForm";
 import TaskCalendar from "../Dashboards/MyTasks/TaskCalendar"; // Import the calendar component
 
@@ -15,6 +16,7 @@ const MyTasks = () => {
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [currentTask, setCurrentTask] = useState(null);
@@ -183,6 +185,52 @@ const MyTasks = () => {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Function to export tasks to Excel
+  const handleExportTasks = () => {
+    // Use filtered tasks if there's a search term or filter, otherwise use all tasks
+    const dataToExport = filteredTasks;
+    
+    if (dataToExport.length === 0) {
+      alert("No tasks to export.");
+      return;
+    }
+    
+    setIsExporting(true);
+    
+    try {
+      // Transform tasks to a format suitable for Excel
+      const exportData = dataToExport.map(task => ({
+        'Title': task.title || '',
+        'Description': task.description || '',
+        'Status': task.status || '',
+        'Priority': task.priority || '',
+        'Assigned To': task.assignedTo || '',
+        'Related To': task.relatedTo || '',
+        'Due Date': formatDate(task.dueDate),
+        'Reminder Date': formatDate(task.reminderDate),
+        'Reminder Time': task.reminderTime || '',
+        'Created At': formatDate(task.createdAt)
+      }));
+      
+      // Create workbook and worksheet
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'My Tasks');
+      
+      // Generate Excel file and download
+      XLSX.writeFile(workbook, `MyTasks_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
+      
+      console.log("Successfully exported tasks to Excel");
+    } catch (err) {
+      console.error("Export error:", err);
+      alert("Failed to export tasks. " + err.message);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -435,31 +483,89 @@ const MyTasks = () => {
 
   return (
     <div className="w-full h-full p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center mb-6 gap-4">
-        {/* <div className="flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold">My Tasks</h1>
-          {currentUser && (
-            <p className="text-gray-600">Tasks assigned to {currentUser.name}</p>
-          )}
-        </div> */}
-        
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={fetchTasks}
-            disabled={isLoading}
-            className={`px-4 py-2 ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-200 hover:bg-gray-300'} text-gray-700 rounded-md focus:outline-none`}
-          >
-            {isLoading ? 'Refreshing...' : 'Refresh'}
-          </button>
-          <button
-            onClick={() => {
-              setCurrentTask(null);
-              setShowForm(true);
-            }}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none"
-          >
-            + Add Task
-          </button>
+      {/* Unified Action Bar - All controls in one panel */}
+      <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Search Input - Takes priority on mobile, full width on desktop */}
+          <div className="relative flex-grow">
+            <input
+              type="text"
+              placeholder="Search tasks..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+              </svg>
+            </div>
+          </div>
+          
+          {/* Filters and Buttons Container - Stack on mobile, side by side on large screens */}
+          <div className="flex flex-col sm:flex-row gap-2 lg:gap-3">
+            {/* Status Filter */}
+            <div className="w-full sm:w-40">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                <option value="All">All Statuses</option>
+                <option value="Not Started">Not Started</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={fetchTasks}
+                disabled={isLoading}
+                className="px-3 py-2 flex items-center text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                <svg className="mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {isLoading ? 'Refreshing...' : 'Refresh'}
+              </button>
+              <button 
+                onClick={handleExportTasks}
+                disabled={isExporting}
+                className="px-3 py-2 flex items-center text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                {isExporting ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Exporting...
+                  </span>
+                ) : (
+                  <>
+                    <svg className="mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export
+                  </>
+                )}
+              </button>
+              <button 
+                onClick={() => {
+                  setCurrentTask(null);
+                  setShowForm(true);
+                }}
+                className="px-3 py-2 flex items-center text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <svg className="mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Task
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -469,34 +575,6 @@ const MyTasks = () => {
           {error}
         </div>
       )}
-      
-      {/* Filters & search */}
-      <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-        <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:space-x-4">
-          <div className="w-full">
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-          
-          <div className="w-full sm:w-auto">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="All">All Statuses</option>
-              <option value="Not Started">Not Started</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-            </select>
-          </div>
-        </div>
-      </div>
       
       {/* Calendar view */}
       <TaskCalendar 
