@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 
 // API URL - adjust according to your backend setup
-const API_URL = "https://crm-be.fly.dev/api";
+import config from "../../config";
+const API_URL = config.API_URL;
 
 const TaskForm = ({ task, onSave, onCancel }) => {
   const [formData, setFormData] = useState(

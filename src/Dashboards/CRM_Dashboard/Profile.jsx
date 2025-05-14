@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import config from '../../config';
 
 const ProfileAvatar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -24,11 +25,12 @@ const ProfileAvatar = () => {
           return;
         }
         
-        const response = await fetch('https://crm-be.fly.dev/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        
+const response = await fetch(`${config.API_URL}/auth/me`, {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
 
         if (!response.ok) {
           // Handle invalid token or other errors

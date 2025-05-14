@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import * as XLSX from 'xlsx';
 import ContactForm from "../Dashboards/Contact form/contactForm";
 import ContactDetails from "../Dashboards/Contact form/contactDetailsPopup";
+import config from '../config';
 
 const ContactManagement = () => {
   const [contacts, setContacts] = useState([]);
@@ -54,8 +55,8 @@ const ContactManagement = () => {
   }, [showForm, showDetails]);
 
   // API base URL - ensure this matches your backend deployment
-  const API_URL = "https://crm-be.fly.dev/api/contacts";
-  const AUTH_URL = "https://crm-be.fly.dev/api/auth";
+const API_URL = `${config.API_URL}/contacts`;
+const AUTH_URL = `${config.API_URL}/auth`;
 
   // Check if user is authenticated on mount
   useEffect(() => {

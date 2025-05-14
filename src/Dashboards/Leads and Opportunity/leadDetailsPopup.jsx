@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 
 // API base URL - change this to match your backend
-const API_URL = "https://crm-be.fly.dev/api";
+import config from '../../config';
+const API_URL = config.API_URL;
 
 // Component to display full lead details in a modal popup with audit log
 const LeadDetailsModal = ({ lead, onClose }) => {
@@ -11,6 +12,7 @@ const LeadDetailsModal = ({ lead, onClose }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [conversionRates, setConversionRates] = useState({});
   const [audValue, setAudValue] = useState(null);
+  const [audSubscription, setAudSubscription] = useState(null);
 
   // Function to get auth headers
   const getAuthHeaders = () => {
@@ -45,8 +47,8 @@ const LeadDetailsModal = ({ lead, onClose }) => {
 
   // Calculate AUD value whenever lead or conversion rates change
   useEffect(() => {
-    if (lead?.value && conversionRates && Object.keys(conversionRates).length > 0) {
-      calculateAudValue();
+    if (lead && conversionRates && Object.keys(conversionRates).length > 0) {
+      calculateAudValues();
     }
   }, [lead, conversionRates]);
 
@@ -141,18 +143,25 @@ const LeadDetailsModal = ({ lead, onClose }) => {
     }
   };
 
-  // Calculate AUD value based on lead value and currency
-  const calculateAudValue = () => {
+  // Calculate AUD values based on lead values and currency
+  const calculateAudValues = () => {
     // Default to AUD if no currency code is specified
     const currencyCode = lead.currencyCode || 'AUD';
     
     // If we don't have a conversion rate for this currency, use 1
     const rate = conversionRates[currencyCode] || 1;
     
-    // Calculate AUD value
-    const convertedValue = lead.value * rate;
+    // Calculate AUD value for implementation value
+    if (lead.value !== undefined && lead.value !== null) {
+      const convertedValue = lead.value * rate;
+      setAudValue(convertedValue);
+    }
     
-    setAudValue(convertedValue);
+    // Calculate AUD value for subscription
+    if (lead.subscription !== undefined && lead.subscription !== null) {
+      const convertedSubscription = lead.subscription * rate;
+      setAudSubscription(convertedSubscription);
+    }
   };
 
   // Generate mock audit data for demonstration purposes
@@ -197,6 +206,11 @@ const LeadDetailsModal = ({ lead, onClose }) => {
             field: "value",
             oldValue: "9500",
             newValue: lead.value ? lead.value.toString() : "10000"
+          },
+          {
+            field: "subscription",
+            oldValue: "500",
+            newValue: lead.subscription ? lead.subscription.toString() : "750"
           }
         ]
       },
@@ -242,6 +256,12 @@ const LeadDetailsModal = ({ lead, onClose }) => {
             field: "nextStep",
             oldValue: "Send follow-up email", 
             newValue: lead.nextStep || "Schedule a demo"
+          },
+          // Add a sample change for the subscription field
+          {
+            field: "subscription",
+            oldValue: "0", 
+            newValue: "500"
           }
         ]
       }
@@ -291,6 +311,7 @@ const LeadDetailsModal = ({ lead, onClose }) => {
       case "stage": return "Stage";
       case "priority": return "Priority";
       case "value": return "Value";
+      case "subscription": return "Subscription";
       case "currencyCode": return "Currency";
       case "notes": return "Notes";
       case "nextStep": return "Next Step";
@@ -321,6 +342,7 @@ const LeadDetailsModal = ({ lead, onClose }) => {
     
     switch(field) {
       case "value":
+      case "subscription":
         return formatCurrencyValue(parseFloat(value), lead.currencyCode || 'AUD');
       
       case "stage":
@@ -416,7 +438,7 @@ const LeadDetailsModal = ({ lead, onClose }) => {
               <h3 className="text-lg font-medium text-gray-900 mb-4">Deal Information</h3>
               <div className="space-y-3">
                 <div>
-                  <span className="text-sm text-gray-500">Original Value:</span>
+                  <span className="text-sm text-gray-500">Implementation Value:</span>
                   <p className="font-medium">
                     {formatCurrencyValue(lead.value, lead.currencyCode || 'AUD')}
                     {lead.currencyCode && lead.currencyCode !== 'AUD' && (
@@ -429,6 +451,22 @@ const LeadDetailsModal = ({ lead, onClose }) => {
                   <p className="font-medium">
                     {lead.audValue ? formatCurrencyValue(lead.audValue) : 
                      (audValue ? formatCurrencyValue(audValue) : '—')}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-500">Subscription Value:</span>
+                  <p className="font-medium">
+                    {formatCurrencyValue(lead.subscription || 0, lead.currencyCode || 'AUD')}
+                    {lead.currencyCode && lead.currencyCode !== 'AUD' && (
+                      <span className="ml-1 text-sm text-gray-500">({lead.currencyCode})</span>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-500">AUD Subscription:</span>
+                  <p className="font-medium">
+                    {lead.audSubscription ? formatCurrencyValue(lead.audSubscription) : 
+                     (audSubscription ? formatCurrencyValue(audSubscription) : '—')}
                   </p>
                 </div>
                 <div>

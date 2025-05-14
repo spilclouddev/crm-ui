@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import config from "../config";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -33,13 +34,13 @@ const ForgotPassword = () => {
       setIsLoading(true);
       
       try {
-        const response = await fetch("https://crm-be.fly.dev/api/auth/forgot-password", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ email })
-        });
+  const response = await fetch(`${config.API_URL}/auth/forgot-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email })
+  });
         
         const data = await response.json();
         

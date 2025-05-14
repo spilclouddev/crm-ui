@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import config from "../config";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -73,17 +74,17 @@ const Signup = () => {
       //http://localhost:5000/api/auth/signup
       
       try {
-        const response = await fetch("https://crm-be.fly.dev/api/auth/signup", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            name: formData.name,
-            email: formData.email,
-            password: formData.password
-          })
-        });
+  const response = await fetch(`${config.API_URL}/auth/signup`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password
+    })
+  });
         
         const data = await response.json();
         

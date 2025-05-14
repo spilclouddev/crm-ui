@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import config from '../../config';
 
 // Define lead stages directly in the component
 export const LEAD_STAGES = [
@@ -31,7 +32,8 @@ export const CURRENCIES = [
 ];
 
 // API base URL - change this to match your backend
-const API_URL = "https://crm-be.fly.dev/api";
+
+const API_URL = config.API_URL;
 
 const LeadForm = ({ lead, onSave, onCancel }) => {
   // Initialize form data with lead data or defaults
@@ -51,6 +53,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
         company: lead.company || "",
         country: lead.country || "Australia",
         value: lead.value?.toString() || "",
+        subscription: lead.subscription?.toString() || "",
         stage: lead.stage || "New Lead",
         priority: lead.priority || "Medium",
         notes: lead.notes || "",
@@ -65,6 +68,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
         company: "",
         country: "Australia",
         value: "",
+        subscription: "",
         stage: "New Lead",
         priority: "Medium",
         notes: "",
@@ -269,12 +273,16 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
       // Convert value to a clean number for submission
       const cleanValue = formData.value ? parseFloat(formData.value.toString().replace(/[^\d.]/g, '')) : 0;
       
+      // Convert subscription to a clean number for submission
+      const cleanSubscription = formData.subscription ? parseFloat(formData.subscription.toString().replace(/[^\d.]/g, '')) : 0;
+      
       // Create request body based on entry mode
       const requestBody = {
         isManualEntry: isManualEntry, // Flag to tell backend this is manual entry
         company: formData.company,
         country: formData.country,
         value: cleanValue,
+        subscription: cleanSubscription,
         currencyCode: "AUD", // Default to AUD 
         stage: formData.stage,
         priority: formData.priority,
@@ -352,11 +360,11 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
   };
 
   const handleCurrencyInputChange = (e) => {
-    const rawValue = e.target.value;
-    const formattedValue = formatCurrencyInput(rawValue);
+    const { name, value } = e.target;
+    const formattedValue = formatCurrencyInput(value);
     setFormData({
       ...formData,
-      value: formattedValue
+      [name]: formattedValue
     });
   };
 
@@ -518,6 +526,27 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
                 value={formData.value}
                 onChange={handleCurrencyInputChange}
                 required
+                className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+          
+          {/* Subscription input field */}
+          <div>
+            <label htmlFor="subscription" className="block text-sm font-medium text-gray-700">
+              Subscription (AUD)
+            </label>
+            <div className="mt-1 flex rounded-md shadow-sm">
+              <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                $
+              </span>
+              <input
+                type="text"
+                name="subscription"
+                id="subscription"
+                value={formData.subscription}
+                onChange={handleCurrencyInputChange}
                 className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="0.00"
               />

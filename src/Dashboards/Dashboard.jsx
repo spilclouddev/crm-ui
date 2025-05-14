@@ -6,8 +6,8 @@ import BarChart from '../Dashboards/DashboardView/BarChart';
 import DoughnutChart from '../Dashboards/DashboardView/DoughnutChart';
 import FunnelChart from '../Dashboards/DashboardView/FunnelChart';
 
-// API base URL - ensure this matches your backend deployment
-const API_URL = "https://crm-be.fly.dev/api";
+import config from '../config';
+const API_URL = config.API_URL;
 
 // Mock data for development - we'll use this as a fallback when data can't be fetched
 const MOCK_DATA = {
@@ -38,12 +38,14 @@ const Dashboard = () => {
 
   // Chart options for the dropdown
   const chartOptions = [
-    { id: 'trafficSources', name: 'Traffic Sources', description: 'Breakdown of traffic sources to your platform' },
-    { id: 'customerFeedback', name: 'Customer Feedback', description: 'Summary of customer satisfaction ratings' },
-    { id: 'Statistics', name: 'Statistics', description: 'Comparison of different quantities' },
-    { id: 'bounceRateTrends', name: 'Rate Trends', description: 'Weekly rate metrics over time' },
-    { id: 'socialMediaPresence', name: 'Social Media Presence', description: 'Comparison of followers across platforms' },
-    { id: 'funnelChart', name: 'FunnelChart', description: 'Comparison of followers across platforms' }
+    { id: 'trafficSources', name: 'Implementation Value By Country', description: '' },
+    { id: 'customerFeedback', name: 'Subscription Amount By Country', description: '' },
+    { id: 'Statistics', name: 'Implementation Value By Company', description: '' },
+    { id: 'funnelChart', name: 'Sales PIpeline Stages', description: '' },
+    { id: 'socialMediaPresence', name: 'Social Media Presence', description: '' },
+    // { id: 'bounceRateTrends', name: 'Rate Trends', description: 'Weekly rate metrics over time' }
+    
+    
   ];
 
   // Function to get auth headers
@@ -430,7 +432,7 @@ const Dashboard = () => {
         {/* Chart Content Area */}
         <div className="p-4 flex-grow flex flex-col overflow-hidden">
           <h2 className="text-lg font-medium mb-2 text-center">
-            {chartOptions.find(option => option.id === selectedChart)?.name}
+            {/* {chartOptions.find(option => option.id === selectedChart)?.name} */}
           </h2>
           <div className="flex-grow relative">
             {/* The chart container needs a fixed aspect ratio to prevent scrolling */}

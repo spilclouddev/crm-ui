@@ -3,8 +3,9 @@ import * as XLSX from 'xlsx';
 import LeadForm from "../Dashboards/Leads and Opportunity/leadForm"; // Import the LeadForm component
 import LeadDetailsModal from "../Dashboards/Leads and Opportunity/leadDetailsPopup"; // Import the modal component
 
-// API base URL - change this to match your backend
-const API_URL = "https://crm-be.fly.dev/api";
+import config from '../config';
+const API_URL = config.API_URL;
+
 
 // Define lead stages directly in this component for filtering
 const LEAD_STAGES = [
@@ -103,6 +104,7 @@ const LeadsAndOpportunities = () => {
       id: stageMap[stage._id]?.id || stage._id.toLowerCase().replace(/\s+/g, ''),
       name: stage._id,
       value: stage.totalValue,
+      subscription: stage.totalSubscription,
       color: stageMap[stage._id]?.color || "bg-gray-100",
       companies: stage.leads.map(lead => lead.company)
     }));
@@ -163,6 +165,22 @@ const LeadsAndOpportunities = () => {
           const aValue = a.audValue !== undefined ? a.audValue : a.value;
           const bValue = b.audValue !== undefined ? b.audValue : b.value;
           return aValue - bValue;
+        });
+        break;
+      case "Subscription High":
+        // Sort by AUD subscription if available, otherwise use original subscription
+        result.sort((a, b) => {
+          const aSubscription = a.audSubscription !== undefined ? a.audSubscription : (a.subscription || 0);
+          const bSubscription = b.audSubscription !== undefined ? b.audSubscription : (b.subscription || 0);
+          return bSubscription - aSubscription;
+        });
+        break;
+      case "Subscription Low":
+        // Sort by AUD subscription if available, otherwise use original subscription
+        result.sort((a, b) => {
+          const aSubscription = a.audSubscription !== undefined ? a.audSubscription : (a.subscription || 0);
+          const bSubscription = b.audSubscription !== undefined ? b.audSubscription : (b.subscription || 0);
+          return aSubscription - bSubscription;
         });
         break;
       case "Company":
@@ -226,6 +244,11 @@ const LeadsAndOpportunities = () => {
   const getDisplayValue = (lead) => {
     return formatValue(lead.value);
   };
+  
+  // Get subscription value to display
+  const getDisplaySubscription = (lead) => {
+    return formatValue(lead.subscription || 0);
+  };
 
   // Handle exporting leads to Excel
   const handleExportLeads = () => {
@@ -245,6 +268,7 @@ const LeadsAndOpportunities = () => {
         'Company': lead.company || '',
         'Contact Name': getContactName(lead),
         'Value': lead.value ? parseFloat(lead.value).toFixed(2) : '0.00',
+        'Subscription': lead.subscription ? parseFloat(lead.subscription).toFixed(2) : '0.00',
         'Stage': lead.stage || '',
         'Priority': lead.priority || 'Medium',
         'Country': lead.country || 'Australia',
@@ -359,6 +383,12 @@ const LeadsAndOpportunities = () => {
                         maximumFractionDigits: 2
                       })}
                     </div>
+                    <div className="text-sm text-gray-600">
+                      Sub: ${parseFloat(stage.subscription || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
+                    </div>
                   </div>
                   
                   <div className="p-2 max-h-40 overflow-y-auto">
@@ -431,6 +461,8 @@ const LeadsAndOpportunities = () => {
                   <option value="Recent">Sort: Recent</option>
                   <option value="Value High">Value: High to Low</option>
                   <option value="Value Low">Value: Low to High</option>
+                  <option value="Subscription High">Subscription: High to Low</option>
+                  <option value="Subscription Low">Subscription: Low to High</option>
                   <option value="Company">Company: A-Z</option>
                 </select>
               </div>
@@ -495,7 +527,8 @@ const LeadsAndOpportunities = () => {
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-4">Company/Contact</th>
-                  <th className="hidden md:table-cell text-left py-3 px-4">Value (AUD)</th>
+                  <th className="hidden md:table-cell text-left py-3 px-4">Implementation Value (AUD)</th>
+                  <th className="hidden md:table-cell text-left py-3 px-4">Subscription (AUD)</th>
                   <th className="hidden md:table-cell text-left py-3 px-4">Country</th>
                   <th className="text-left py-3 px-4">Stage</th>
                   <th className="hidden sm:table-cell text-left py-3 px-4">Priority</th>
@@ -518,7 +551,11 @@ const LeadsAndOpportunities = () => {
                       </div>
                       {/* Mobile-only value display */}
                       <div className="md:hidden text-sm font-semibold mt-1">
-                        {getDisplayValue(lead)}
+                        Value: {getDisplayValue(lead)}
+                      </div>
+                      {/* Mobile-only subscription display */}
+                      <div className="md:hidden text-sm mt-1">
+                        Sub: {getDisplaySubscription(lead)}
                       </div>
                       {/* Mobile-only country display */}
                       <div className="md:hidden text-xs text-gray-500 mt-1">
@@ -527,6 +564,9 @@ const LeadsAndOpportunities = () => {
                     </td>
                     <td className="hidden md:table-cell py-3 px-4">
                       {getDisplayValue(lead)}
+                    </td>
+                    <td className="hidden md:table-cell py-3 px-4">
+                      {getDisplaySubscription(lead)}
                     </td>
                     <td className="hidden md:table-cell py-3 px-4">
                       {lead.country || 'Australia'}

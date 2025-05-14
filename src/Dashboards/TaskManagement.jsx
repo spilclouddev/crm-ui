@@ -3,7 +3,10 @@ import * as XLSX from 'xlsx';
 import TaskForm from "../Dashboards/Task management/taskForm";
 
 // API URL - adjust according to your backend setup
-const API_URL = "https://crm-be.fly.dev/api";
+import config from '../config'; // Adjust the path as needed
+
+// API base URL from config
+const API_URL = config.API_URL;
 
 // Local storage keys
 const TASKS_STORAGE_KEY = "crm_tasks";

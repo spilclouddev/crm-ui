@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import config from "../config";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -59,16 +60,16 @@ const ResetPassword = () => {
       setIsLoading(true);
       
       try {
-        const response = await fetch("https://crm-be.fly.dev/api/auth/reset-password", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            token,
-            newPassword: formData.newPassword
-          })
-        });
+  const response = await fetch(`${config.API_URL}/auth/reset-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      token,
+      newPassword: formData.newPassword
+    })
+  });
         
         const data = await response.json();
         

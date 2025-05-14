@@ -9,20 +9,23 @@ import LeadsAndOpportunities from "../LeadsAndOpportunities";
 import TaskManagement from "../TaskManagement";
 import ContactManagement from "../ContactManagement";
 import MyTasks from "../MyTasks";
+import Chargeables from "../Chargeables"; // Import the new Chargeables component
 import NotificationsPopup from "../CRM_Dashboard/notificationPopup";
 import ProfileAvatar from "../CRM_Dashboard/Profile";
-import Dashboard from "../Dashboard"; // Import the new Dashboard component
+import Dashboard from "../Dashboard";
 import { Menu, X, Bell } from "lucide-react";
+import config from '../../config';
 
 // Local storage key for notifications
 const NOTIFICATIONS_STORAGE_KEY = 'crm_notifications';
-const API_BASE_URL = "https://crm-be.fly.dev/api"; 
-//
 
+const API_BASE_URL = config.API_URL;
+// Updated sections array to include Chargeables
 const sections = [
-  { id: "dashboard", name: "Dashboard" }, // Moved dashboard to the top
+  { id: "dashboard", name: "Dashboard" },
   { id: "contact", name: "Contact Management" },
   { id: "leads", name: "Leads & Opportunities" },
+  { id: "chargeables", name: "Chargeables" }, // Added Chargeables section
   { id: "tasks", name: "Task Management" },
   { id: "my tasks", name: "My Tasks" }
 ];
@@ -160,7 +163,7 @@ const TopBar = ({ title, setMobileMenuOpen, toggleNotifications, unreadCount }) 
   );
 };
 
-// Updated Content component to include Dashboard
+// Updated Content component to include Chargeables
 const Content = ({ selectedSection }) => {
   // For tasks tab, we track when it was selected to trigger a refresh
   const [myTasksKey, setMyTasksKey] = useState(1);
@@ -174,11 +177,13 @@ const Content = ({ selectedSection }) => {
   
   switch(selectedSection.id) {
     case "dashboard":
-      return <Dashboard />; // Return the Dashboard component when dashboard is selected
+      return <Dashboard />;
     case "contact":
       return <ContactManagement />;
     case "leads":
       return <LeadsAndOpportunities />;
+    case "chargeables": // Added case for Chargeables
+      return <Chargeables />;
     case "tasks":
       return <TaskManagement />;
     case "my tasks":
