@@ -3,5 +3,14 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],  // Add the Vite plugin here
+   plugins: [react(), tailwindcss()],  
+  optimizeDeps: {
+    include: ["@canvasjs/react-charts"]
+  },
+  build: {
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    }
+  }
+});
 })
