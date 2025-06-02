@@ -295,35 +295,57 @@ const Chargeables = () => {
     setSortConfig({ key, direction });
   };
 
-  // Apply sorting to the data
+  // Apply sorting to the data, keeping customer groups together
   const getSortedData = () => {
     const sortableData = [...chargeables];
     
-    if (sortConfig.key) {
-      sortableData.sort((a, b) => {
-        let aValue = a[sortConfig.key];
-        let bValue = b[sortConfig.key];
-        
-        // Special handling for date fields
-        if (sortConfig.key === 'quoteSendDate') {
-          aValue = new Date(aValue);
-          bValue = new Date(bValue);
+    // First group by customer name
+    sortableData.sort((a, b) => {
+      // Compare customer names to ensure grouping
+      if (a.customerName < b.customerName) return -1;
+      if (a.customerName > b.customerName) return 1;
+      
+      // Within the same customer group, apply the user's sort preference
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+      
+      // Special handling for date fields
+      if (sortConfig.key === 'quoteSendDate') {
+        aValue = new Date(aValue);
+        bValue = new Date(bValue);
+      }
+      
+      // Handle numeric values
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      
+      // Handle strings and other types
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+    
+    // If the primary sort is by customerName and the direction is 'desc',
+    // we need to reverse the entire array while preserving the secondary sort
+    if (sortConfig.key === 'customerName' && sortConfig.direction === 'desc') {
+      // Group data by customer name
+      const customerGroups = {};
+      sortableData.forEach(item => {
+        if (!customerGroups[item.customerName]) {
+          customerGroups[item.customerName] = [];
         }
-        
-        // Handle numeric values
-        if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-        }
-        
-        // Handle strings and other types
-        if (aValue < bValue) {
-          return sortConfig.direction === 'asc' ? -1 : 1;
-        }
-        if (aValue > bValue) {
-          return sortConfig.direction === 'asc' ? 1 : -1;
-        }
-        return 0;
+        customerGroups[item.customerName].push(item);
       });
+      
+      // Reverse the order of customer groups
+      return Object.keys(customerGroups)
+        .sort((a, b) => b.localeCompare(a))
+        .flatMap(customerName => customerGroups[customerName]);
     }
     
     return sortableData;

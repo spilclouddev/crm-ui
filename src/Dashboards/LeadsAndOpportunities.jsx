@@ -6,7 +6,6 @@ import LeadDetailsModal from "../Dashboards/Leads and Opportunity/leadDetailsPop
 import config from '../config';
 const API_URL = config.API_URL;
 
-
 // Define lead stages directly in this component for filtering
 const LEAD_STAGES = [
   "New Lead",
@@ -22,11 +21,17 @@ const LEAD_STAGES = [
   "Follow-up Later"
 ];
 
+// Define priorities for filtering
+const PRIORITIES = ["High", "Medium", "Low"];
+
 const LeadsAndOpportunities = () => {
   const [leads, setLeads] = useState([]);
   const [pipelineData, setPipelineData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [companyFilter, setCompanyFilter] = useState("All");
+  const [countryFilter, setCountryFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
   const [sortOption, setSortOption] = useState("Recent");
   const [showForm, setShowForm] = useState(false);
   const [currentLead, setCurrentLead] = useState(null);
@@ -36,6 +41,12 @@ const LeadsAndOpportunities = () => {
   const [selectedLead, setSelectedLead] = useState(null);
   // State for export process
   const [isExporting, setIsExporting] = useState(false);
+  // State for filter panel
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  // State for saved filters
+  const [savedFilters, setSavedFilters] = useState([]);
+  const [currentFilterName, setCurrentFilterName] = useState("");
+  const [activeFilterId, setActiveFilterId] = useState(null);
 
   // Function to get auth headers
   const getAuthHeaders = () => {
@@ -79,10 +90,44 @@ const LeadsAndOpportunities = () => {
     }
   };
 
+  // Load saved filters from localStorage
+  const loadSavedFilters = () => {
+    try {
+      const savedFiltersData = localStorage.getItem('savedLeadFilters');
+      if (savedFiltersData) {
+        setSavedFilters(JSON.parse(savedFiltersData));
+      }
+    } catch (err) {
+      console.error("Error loading saved filters:", err);
+    }
+  };
+
+  // Save filters to localStorage
+  const saveFiltersToStorage = (filters) => {
+    try {
+      localStorage.setItem('savedLeadFilters', JSON.stringify(filters));
+    } catch (err) {
+      console.error("Error saving filters:", err);
+    }
+  };
+
   // Initial data load
   useEffect(() => {
     fetchData();
+    loadSavedFilters();
   }, []);
+
+  // Get unique companies for filter dropdown
+  const uniqueCompanies = React.useMemo(() => {
+    const companies = leads.map(lead => lead.company);
+    return ["All", ...new Set(companies)].filter(Boolean);
+  }, [leads]);
+
+  // Get unique countries for filter dropdown
+  const uniqueCountries = React.useMemo(() => {
+    const countries = leads.map(lead => lead.country || "Australia");
+    return ["All", ...new Set(countries)].filter(Boolean);
+  }, [leads]);
 
   // Process pipeline data for display
   const processedPipeline = React.useMemo(() => {
@@ -144,9 +189,24 @@ const LeadsAndOpportunities = () => {
       });
     }
     
-    // Apply status filter
+    // Apply company filter
+    if (companyFilter !== "All") {
+      result = result.filter(lead => lead.company === companyFilter);
+    }
+    
+    // Apply country filter
+    if (countryFilter !== "All") {
+      result = result.filter(lead => (lead.country || "Australia") === countryFilter);
+    }
+    
+    // Apply status/stage filter
     if (statusFilter !== "All") {
       result = result.filter(lead => lead.stage === statusFilter);
+    }
+    
+    // Apply priority filter
+    if (priorityFilter !== "All") {
+      result = result.filter(lead => lead.priority === priorityFilter);
     }
     
     // Apply sorting
@@ -193,7 +253,7 @@ const LeadsAndOpportunities = () => {
     }
     
     return result;
-  }, [leads, searchTerm, statusFilter, sortOption]);
+  }, [leads, searchTerm, companyFilter, countryFilter, statusFilter, priorityFilter, sortOption]);
 
   // Get stage badge color
   const getStageBadgeColor = (stage) => {
@@ -345,6 +405,68 @@ const LeadsAndOpportunities = () => {
     setSelectedLead(null);
   };
 
+  // Reset all filters
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("All");
+    setCompanyFilter("All");
+    setCountryFilter("All");
+    setPriorityFilter("All");
+    setActiveFilterId(null);
+  };
+
+  // Save current filter
+  const handleSaveFilter = () => {
+    if (!currentFilterName.trim()) {
+      alert("Please enter a filter name");
+      return;
+    }
+
+    const newFilter = {
+      id: Date.now(), // use timestamp as unique ID
+      name: currentFilterName,
+      filters: {
+        searchTerm,
+        statusFilter,
+        companyFilter,
+        countryFilter,
+        priorityFilter,
+        sortOption
+      }
+    };
+
+    const updatedFilters = [...savedFilters, newFilter];
+    setSavedFilters(updatedFilters);
+    saveFiltersToStorage(updatedFilters);
+    setCurrentFilterName("");
+    setActiveFilterId(newFilter.id);
+  };
+
+  // Apply saved filter
+  const handleApplyFilter = (filter) => {
+    if (filter && filter.filters) {
+      setSearchTerm(filter.filters.searchTerm || "");
+      setStatusFilter(filter.filters.statusFilter || "All");
+      setCompanyFilter(filter.filters.companyFilter || "All");
+      setCountryFilter(filter.filters.countryFilter || "All");
+      setPriorityFilter(filter.filters.priorityFilter || "All");
+      setSortOption(filter.filters.sortOption || "Recent");
+      setActiveFilterId(filter.id);
+    }
+  };
+
+  // Delete saved filter
+  const handleDeleteFilter = (id) => {
+    const updatedFilters = savedFilters.filter(filter => filter.id !== id);
+    setSavedFilters(updatedFilters);
+    saveFiltersToStorage(updatedFilters);
+    
+    // If the active filter is deleted, reset active filter
+    if (activeFilterId === id) {
+      setActiveFilterId(null);
+    }
+  };
+
   if (loading && leads.length === 0) {
     return <div className="p-4 sm:p-6 text-center">Loading data...</div>;
   }
@@ -435,7 +557,7 @@ const LeadsAndOpportunities = () => {
             
             {/* Filters and Buttons Container - Stack on mobile, side by side on large screens */}
             <div className="flex flex-col sm:flex-row gap-2 lg:gap-3">
-              {/* Status Filter */}
+              {/* Status Filter - Kept for simplicity */}
               <div className="w-full sm:w-40">
                 <select 
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -471,6 +593,16 @@ const LeadsAndOpportunities = () => {
               <div className="flex gap-2">
                 <button 
                   className="px-3 py-2 flex items-center text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  onClick={() => setShowFilterPanel(!showFilterPanel)}
+                >
+                  <svg className="mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  Filters {filteredLeads.length !== leads.length && <span className="ml-1 text-xs bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded-full">Active</span>}
+                </button>
+                
+                <button 
+                  className="px-3 py-2 flex items-center text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   onClick={handleExportLeads}
                   disabled={isExporting}
                 >
@@ -491,6 +623,7 @@ const LeadsAndOpportunities = () => {
                     </>
                   )}
                 </button>
+                
                 <button 
                   className="px-3 py-2 flex items-center text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                   onClick={() => {
@@ -506,6 +639,142 @@ const LeadsAndOpportunities = () => {
               </div>
             </div>
           </div>
+
+          {/* Expanded Filter Panel */}
+          {showFilterPanel && (
+            <div className="mt-4 border-t pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                {/* Company Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    value={companyFilter}
+                    onChange={(e) => setCompanyFilter(e.target.value)}
+                  >
+                    <option value="All">All Companies</option>
+                    {uniqueCompanies.filter(company => company !== "All").map(company => (
+                      <option key={company} value={company}>
+                        {company}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Country Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    value={countryFilter}
+                    onChange={(e) => setCountryFilter(e.target.value)}
+                  >
+                    <option value="All">All Countries</option>
+                    {uniqueCountries.filter(country => country !== "All").map(country => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Stage/Status Filter (moved here from above) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Stage</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="All">All Stages</option>
+                    {LEAD_STAGES.map(stage => (
+                      <option key={stage} value={stage}>
+                        {stage}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Priority Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    value={priorityFilter}
+                    onChange={(e) => setPriorityFilter(e.target.value)}
+                  >
+                    <option value="All">All Priorities</option>
+                    {PRIORITIES.map(priority => (
+                      <option key={priority} value={priority}>
+                        {priority}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              {/* Save and Reset Filter Buttons */}
+              <div className="flex flex-wrap items-center gap-3 mt-2">
+                <button
+                  className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  onClick={handleResetFilters}
+                >
+                  Reset Filters
+                </button>
+                
+                <div className="flex-grow-0 flex items-center space-x-2">
+                  <input
+                    type="text"
+                    placeholder="Save filter as..."
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    value={currentFilterName}
+                    onChange={(e) => setCurrentFilterName(e.target.value)}
+                  />
+                  <button
+                    className="px-3 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500"
+                    onClick={handleSaveFilter}
+                    disabled={!currentFilterName.trim()}
+                  >
+                    Save Filter
+                  </button>
+                </div>
+              </div>
+              
+              {/* Saved Filters Section */}
+              {savedFilters.length > 0 && (
+                <div className="mt-4 pt-4 border-t">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Saved Filters</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {savedFilters.map(filter => (
+                      <div
+                        key={filter.id}
+                        className={`flex items-center px-3 py-1.5 rounded-full border text-sm ${
+                          activeFilterId === filter.id
+                            ? 'bg-indigo-100 border-indigo-300 text-indigo-800'
+                            : 'bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200'
+                        }`}
+                      >
+                        <button
+                          onClick={() => handleApplyFilter(filter)}
+                          className="mr-2"
+                        >
+                          {filter.name}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFilter(filter.id)}
+                          className="text-gray-500 hover:text-red-500"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         
         {/* Lead form (conditionally shown) */}

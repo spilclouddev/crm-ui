@@ -9,7 +9,8 @@ import LeadsAndOpportunities from "../LeadsAndOpportunities";
 import TaskManagement from "../TaskManagement";
 import ContactManagement from "../ContactManagement";
 import MyTasks from "../MyTasks";
-import Chargeables from "../Chargeables"; // Import the new Chargeables component
+import Chargeables from "../Chargeables"; 
+import Forecast from "../Forecast"; // Import the new Forecast component
 import NotificationsPopup from "../CRM_Dashboard/notificationPopup";
 import ProfileAvatar from "../CRM_Dashboard/Profile";
 import Dashboard from "../Dashboard";
@@ -20,12 +21,13 @@ import config from '../../config';
 const NOTIFICATIONS_STORAGE_KEY = 'crm_notifications';
 
 const API_BASE_URL = config.API_URL;
-// Updated sections array to include Chargeables
+// Updated sections array to include Forecast
 const sections = [
   { id: "dashboard", name: "Dashboard" },
   { id: "contact", name: "Contact Management" },
   { id: "leads", name: "Leads & Opportunities" },
-  { id: "chargeables", name: "Chargeables" }, // Added Chargeables section
+  { id: "chargeables", name: "Chargeables" },
+  { id: "forecast", name: "Forecast" }, // Added Forecast section
   { id: "tasks", name: "Task Management" },
   { id: "my tasks", name: "My Tasks" }
 ];
@@ -163,7 +165,7 @@ const TopBar = ({ title, setMobileMenuOpen, toggleNotifications, unreadCount }) 
   );
 };
 
-// Updated Content component to include Chargeables
+// Updated Content component to include Forecast
 const Content = ({ selectedSection }) => {
   // For tasks tab, we track when it was selected to trigger a refresh
   const [myTasksKey, setMyTasksKey] = useState(1);
@@ -182,8 +184,10 @@ const Content = ({ selectedSection }) => {
       return <ContactManagement />;
     case "leads":
       return <LeadsAndOpportunities />;
-    case "chargeables": // Added case for Chargeables
+    case "chargeables":
       return <Chargeables />;
+    case "forecast":
+      return <Forecast />; // Added Forecast component
     case "tasks":
       return <TaskManagement />;
     case "my tasks":

@@ -40,9 +40,9 @@ const Dashboard = () => {
   const chartOptions = [
     { id: 'trafficSources', name: 'Implementation Value By Country', description: '' },
     { id: 'customerFeedback', name: 'Subscription Amount By Country', description: '' },
-    { id: 'Statistics', name: 'Implementation Value By Company', description: '' },
     { id: 'funnelChart', name: 'Sales PIpeline Stages', description: '' },
-    { id: 'socialMediaPresence', name: 'Social Media Presence', description: '' },
+    { id: 'Statistics', name: 'Subscription Value By Company', description: '' },
+    { id: 'socialMediaPresence', name: 'Implementation Value By Company', description: '' },
     // { id: 'bounceRateTrends', name: 'Rate Trends', description: 'Weekly rate metrics over time' }
     
     

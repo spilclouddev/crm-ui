@@ -105,7 +105,7 @@ const Login = () => {
         
         <form noValidate onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-1 text-sm">
-            <label htmlFor="email" className="block text-gray-400">Email</label>
+            <label htmlFor="email" className="block text-gray-400"></label>
             <input
               type="email"
               name="email"
@@ -123,7 +123,7 @@ const Login = () => {
           </div>
           
           <div className="space-y-1 text-sm">
-            <label htmlFor="password" className="block text-gray-400">Password</label>
+            <label htmlFor="password" className="block text-gray-400"></label>
             <input
               type="password"
               name="password"

@@ -5,7 +5,6 @@ import config from "../../config";
 const CanvasJSChart = CanvasJSReact.CanvasJSChart;
 
 // API base URL - change this to match your backend
-
 const API_URL = config.API_URL;
 
 const ColumnChart = () => {
@@ -45,21 +44,21 @@ const ColumnChart = () => {
     }
   };
 
-  // Process lead data to get implementation values by company
+  // Process lead data to get subscription values by company
   const processLeadData = (leads) => {
-    // Map companies to their implementation values
+    // Map companies to their subscription values
     const companyData = leads
-      .filter(lead => lead.value && parseFloat(lead.value) > 0) // Filter out leads with no value
+      .filter(lead => lead.subscription && parseFloat(lead.subscription) > 0) // Filter out leads with no subscription value
       .map(lead => ({
         label: lead.company || 'Unnamed Company',
-        y: parseFloat(lead.value || 0),
-        formattedValue: `$${parseFloat(lead.value || 0).toLocaleString(undefined, {
+        y: parseFloat(lead.subscription || 0), // Use subscription value as y
+        formattedSubscription: `${parseFloat(lead.subscription || 0).toLocaleString(undefined, {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         })}`
       }));
     
-    // Sort by implementation value (highest first)
+    // Sort by subscription value (highest first)
     companyData.sort((a, b) => b.y - a.y);
     
     // Limit to top 15 companies for better visualization
@@ -73,6 +72,13 @@ const ColumnChart = () => {
   useEffect(() => {
     fetchLeads();
   }, []);
+
+      // Define an array of colors for dynamic coloring
+  const colorPalette = [
+    "#4F81BC", "#C0504E", "#9BBB59", "#8064A2", "#4BACC6", 
+    "#F79646", "#5A9BD4", "#FF6D6D", "#46BFBD", "#FDB45C", 
+    "#949FB1", "#4D5360", "#784BA0", "#2B908F", "#3A8DC1"
+  ];
 
   // Prepare chart options
   const options = {
@@ -88,28 +94,33 @@ const ColumnChart = () => {
       interval: 1
     },
     axisY: {
-      title: "Implementation Value ($)",
+      title: "Subscription Value ($)",
       includeZero: true,
       prefix: "$",
       valueFormatString: "#,###.##"
     },
     toolTip: {
-      shared: false,
       contentFormatter: function (e) {
-        const point = e.entries[0].dataPoint;
-        return `<strong>${point.label}</strong><br/>Value: ${point.formattedValue}`;
+        return `<strong>${e.entries[0].dataPoint.label}</strong><br/>
+                Subscription: ${e.entries[0].dataPoint.formattedSubscription}`;
       }
     },
     data: [
       {
         type: "column",
-        name: "Implementation Value",
+        name: "Subscription Value",
+        // No single color defined here as we'll use dynamic colors
         indexLabel: "${y}",
         indexLabelFontSize: 12,
         indexLabelPlacement: "outside",
         indexLabelOrientation: "horizontal",
         indexLabelFontColor: "#555",
-        dataPoints: chartData
+        dataPoints: chartData.map((point, index) => ({
+          label: point.label,
+          y: point.y,
+          formattedSubscription: point.formattedSubscription,
+          color: colorPalette[index % colorPalette.length] // Assign a color from the palette based on index
+        }))
       }
     ]
   };
@@ -136,7 +147,7 @@ const ColumnChart = () => {
   if (chartData.length === 0) {
     return (
       <div className="text-center p-4 text-gray-500">
-        No implementation value data available by company.
+        No subscription data available by company.
       </div>
     );
   }

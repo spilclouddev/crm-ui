@@ -386,7 +386,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
         <div className="space-y-4">
           {/* Contact Entry Mode Selection */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 text-left mb-2">
               Contact Information
             </label>
             <div className="flex space-x-4">
@@ -418,7 +418,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
             <>
               {/* Manual entry fields */}
               <div>
-                <label htmlFor="contactPersonName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="contactPersonName" className="block text-sm font-medium text-gray-700 text-left">
                   Contact Person Name
                 </label>
                 <input
@@ -434,7 +434,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
               </div>
               
               <div>
-                <label htmlFor="company" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="company" className="block text-sm font-medium text-gray-700 text-left">
                   Company
                 </label>
                 <input
@@ -453,7 +453,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
             <>
               {/* Dropdown selection fields */}
               <div>
-                <label htmlFor="contactPerson" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="contactPerson" className="block text-sm font-medium text-gray-700 text-left">
                   Contact Person
                 </label>
                 <select
@@ -474,7 +474,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
               </div>
               
               <div>
-                <label htmlFor="company" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="company" className="block text-sm font-medium text-gray-700 text-left">
                   Company
                 </label>
                 <input
@@ -485,14 +485,14 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
                   disabled
                   className="mt-1 block w-full border border-gray-300 bg-gray-100 rounded-md shadow-sm py-2 px-3"
                 />
-                <p className="text-xs text-gray-500 mt-1">Auto-populated from selected contact</p>
+                <p className="text-xs text-gray-500 mt-1 text-left">Auto-populated from selected contact</p>
               </div>
             </>
           )}
           
           {/* Country dropdown */}
           <div>
-            <label htmlFor="country" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="country" className="block text-sm font-medium text-gray-700 text-left">
               Country
             </label>
             <select
@@ -512,7 +512,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
           
           {/* Value input field */}
           <div>
-            <label htmlFor="value" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="value" className="block text-sm font-medium text-gray-700 text-left">
               Value (AUD)
             </label>
             <div className="mt-1 flex rounded-md shadow-sm">
@@ -534,7 +534,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
           
           {/* Subscription input field */}
           <div>
-            <label htmlFor="subscription" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="subscription" className="block text-sm font-medium text-gray-700 text-left">
               Subscription (AUD)
             </label>
             <div className="mt-1 flex rounded-md shadow-sm">
@@ -555,7 +555,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="stage" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="stage" className="block text-sm font-medium text-gray-700 text-left">
                 Stage
               </label>
               <select
@@ -574,7 +574,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
             </div>
             
             <div>
-              <label htmlFor="priority" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="priority" className="block text-sm font-medium text-gray-700 text-left">
                 Priority
               </label>
               <select
@@ -592,7 +592,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
           </div>
           
           <div>
-            <label htmlFor="leadOwner" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="leadOwner" className="block text-sm font-medium text-gray-700 text-left">
               Lead Owner
             </label>
             <select
@@ -612,7 +612,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
           </div>
           
           <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 text-left">
               Notes
             </label>
             <textarea
@@ -628,7 +628,7 @@ const LeadForm = ({ lead, onSave, onCancel }) => {
           
           {/* Next Step field */}
           <div>
-            <label htmlFor="nextStep" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="nextStep" className="block text-sm font-medium text-gray-700 text-left">
               Next Step
             </label>
             <textarea

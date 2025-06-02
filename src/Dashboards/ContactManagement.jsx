@@ -690,25 +690,25 @@ const AUTH_URL = `${config.API_URL}/auth`;
           </div>
         )}
         
-        {/* Contacts Table - Full width with improved responsiveness */}
+        {/* Contacts Table - Full width with improved responsiveness and proper alignment */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden w-full">
           <div className="overflow-x-auto w-full">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Company
                   </th>
-                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden sm:table-cell px-4 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Type
                   </th>
-                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-4 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Email
                   </th>
-                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-4 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Phone
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -741,7 +741,7 @@ const AUTH_URL = `${config.API_URL}/auth`;
                           </div>
                         </div>
                       </td>
-                      <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
+                      <td className="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           {contact.contactType ? (
                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -754,10 +754,10 @@ const AUTH_URL = `${config.API_URL}/auth`;
                           ) : "—"}
                         </div>
                       </td>
-                      <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
+                      <td className="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{contact.companyEmail || contact.email || "—"}</div>
                       </td>
-                      <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
+                      <td className="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{contact.phoneNumber || contact.phone || "—"}</div>
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={e => e.stopPropagation()}>
