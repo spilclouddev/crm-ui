@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 // Import logo image
-import logoImage from "../../assets/spil.png"; 
+import logoImage from "../../assets/riouoceanglass.png"; 
 
 // Import components
 import LeadsAndOpportunities from "../LeadsAndOpportunities";

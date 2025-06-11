@@ -22,7 +22,7 @@ export const COUNTRIES = [
   "Australia",
   "Canada",
   "Croatia",
-  "New Zealand",
+  "Mauritius",
   "USA"
 ];
 
