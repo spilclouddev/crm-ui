@@ -26,6 +26,7 @@ const ContactManagement = () => {
     },
     additionalDetails: "",
     contactPersons: [],
+    companyLogo: null,
     attachments: []
   });
   const [isEditing, setIsEditing] = useState(false);
@@ -55,8 +56,8 @@ const ContactManagement = () => {
   }, [showForm, showDetails]);
 
   // API base URL - ensure this matches your backend deployment
-const API_URL = `${config.API_URL}/contacts`;
-const AUTH_URL = `${config.API_URL}/auth`;
+  const API_URL = `${config.API_URL}/contacts`;
+  const AUTH_URL = `${config.API_URL}/auth`;
 
   // Check if user is authenticated on mount
   useEffect(() => {
@@ -214,6 +215,7 @@ const AUTH_URL = `${config.API_URL}/auth`;
       },
       additionalDetails: "",
       contactPersons: [],
+      companyLogo: null,
       attachments: []
     });
     setIsEditing(false);
@@ -245,6 +247,7 @@ const AUTH_URL = `${config.API_URL}/auth`;
       },
       additionalDetails: contact.additionalDetails || "",
       contactPersons: contact.contactPersons || [],
+      companyLogo: contact.companyLogo || null,
       attachments: contact.attachments || []
     };
     
@@ -281,7 +284,7 @@ const AUTH_URL = `${config.API_URL}/auth`;
     
     if (validationErrors.length > 0) {
       alert(validationErrors.join("\n"));
-      return;
+      return null;
     }
 
     setIsLoading(true);
@@ -363,29 +366,12 @@ const AUTH_URL = `${config.API_URL}/auth`;
         setContacts([savedContact, ...contacts]);
       }
       
-      // Close form and reset
-      setShowForm(false);
-      setCurrentContact({
-        _id: null,
-        contactType: "prospect",
-        companyName: "",
-        companyEmail: "",
-        phoneNumber: "",
-        website: "",
-        companyAddress: {
-          country: "",
-          state: "",
-          addressLine1: "",
-          addressLine2: "",
-          postalCode: ""
-        },
-        additionalDetails: "",
-        contactPersons: [],
-        attachments: []
-      });
+      // Don't close form yet - let the enhanced save function handle that
+      return savedContact;
     } catch (err) {
       setError(`Failed to ${isEditing ? 'update' : 'create'} contact. ` + err.message);
       console.error("Save error:", err);
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -393,7 +379,7 @@ const AUTH_URL = `${config.API_URL}/auth`;
 
   // Handle deleting a contact with auth
   const handleDeleteContact = async (id) => {
-    if (window.confirm("Are you sure you want to delete this contact?")) {
+    if (window.confirm("Are you sure you want to delete this contact? This will also delete the company logo and all attachments.")) {
       setIsLoading(true);
       setError(null);
       
@@ -499,6 +485,9 @@ const AUTH_URL = `${config.API_URL}/auth`;
           contact.companyAddress?.country,
           contact.companyAddress?.postalCode
         ].filter(Boolean).join(', ') || '',
+        'Contact Persons': contact.contactPersons?.length || 0,
+        'Has Logo': contact.companyLogo ? 'Yes' : 'No',
+        'Attachments': contact.attachments?.length || 0,
         'Additional Details': contact.additionalDetails || ''
       }));
       
@@ -521,9 +510,28 @@ const AUTH_URL = `${config.API_URL}/auth`;
     }
   };
 
-  // Close modals
+  // Close modals and reset form
   const closeFormModal = () => {
     setShowForm(false);
+    setCurrentContact({
+      _id: null,
+      contactType: "prospect",
+      companyName: "",
+      companyEmail: "",
+      phoneNumber: "",
+      website: "",
+      companyAddress: {
+        country: "",
+        state: "",
+        addressLine1: "",
+        addressLine2: "",
+        postalCode: ""
+      },
+      additionalDetails: "",
+      contactPersons: [],
+      companyLogo: null,
+      attachments: []
+    });
   };
   
   const closeDetailsModal = () => {
@@ -722,22 +730,42 @@ const AUTH_URL = `${config.API_URL}/auth`;
                       onClick={() => handleViewContact(contact)}
                     >
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {contact.companyName || contact.company || "—"}
-                        </div>
-                        {/* Mobile view - Show contact type, email on same cell */}
-                        <div className="sm:hidden">
-                          <div className="text-xs text-gray-500">{contact.companyEmail || contact.email || "—"}</div>
-                          <div className="mt-1">
-                            {contact.contactType ? (
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                contact.contactType === 'customer' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {contact.contactType.charAt(0).toUpperCase() + contact.contactType.slice(1)}
-                              </span>
-                            ) : "—"}
+                        <div className="flex items-center">
+                          {/* Company Logo */}
+                          <div className="flex-shrink-0 h-10 w-10">
+                            {contact.companyLogo && contact.companyLogo.filePath ? (
+                              <img 
+                                src={contact.companyLogo.filePath} 
+                                alt={contact.companyName || contact.company || ""}
+                                className="h-10 w-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                <span className="text-sm font-medium text-gray-600">
+                                  {(contact.companyName || contact.company || "?").charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {contact.companyName || contact.company || "—"}
+                            </div>
+                            {/* Mobile view - Show contact type, email on same cell */}
+                            <div className="sm:hidden">
+                              <div className="text-xs text-gray-500">{contact.companyEmail || contact.email || "—"}</div>
+                              <div className="mt-1">
+                                {contact.contactType ? (
+                                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    contact.contactType === 'customer' 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    {contact.contactType.charAt(0).toUpperCase() + contact.contactType.slice(1)}
+                                  </span>
+                                ) : "—"}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </td>

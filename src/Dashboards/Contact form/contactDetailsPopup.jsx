@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { FileText, File, Download, Eye, Camera } from "lucide-react";
 
 const ContactDetails = ({ 
   contact, 
@@ -7,6 +8,7 @@ const ContactDetails = ({
   handleDelete
 }) => {
   const [activeTab, setActiveTab] = useState('company');
+  const [imagePreview, setImagePreview] = useState(null);
   
   if (!contact) return null;
 
@@ -19,6 +21,8 @@ const ContactDetails = ({
   const companyAddress = contact.companyAddress || {};
   const contactPersons = contact.contactPersons || [];
   const additionalDetails = contact.additionalDetails || "";
+  const companyLogo = contact.companyLogo;
+  const attachments = contact.attachments || [];
 
   // Format address if it exists
   const formatAddress = (address) => {
@@ -39,6 +43,46 @@ const ContactDetails = ({
     if (address.country) parts.push(address.country);
     
     return parts.length > 0 ? parts.join(", ") : "No address provided";
+  };
+
+  // Get file icon based on file extension
+  const getFileIcon = (fileName, fileType) => {
+    const extension = fileName.toLowerCase().split('.').pop();
+    
+    // Check if it's an image
+    if (fileType && fileType.startsWith('image/')) {
+      return <Eye className="h-5 w-5 text-purple-500" />;
+    }
+    
+    if (['pdf'].includes(extension)) {
+      return <FileText className="h-5 w-5 text-red-500" />;
+    } else if (['doc', 'docx'].includes(extension)) {
+      return <FileText className="h-5 w-5 text-blue-500" />;
+    } else if (['xls', 'xlsx'].includes(extension)) {
+      return <FileText className="h-5 w-5 text-green-500" />;
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
+      return <Eye className="h-5 w-5 text-purple-500" />;
+    } else {
+      return <File className="h-5 w-5 text-gray-500" />;
+    }
+  };
+
+  // Handle attachment click
+  const handleAttachmentClick = (attachment) => {
+    if (attachment.filePath) {
+      // For images, show preview modal
+      if (attachment.fileType && attachment.fileType.startsWith('image/')) {
+        setImagePreview(attachment);
+      } else {
+        // For other files, open in new tab
+        window.open(attachment.filePath, '_blank');
+      }
+    }
+  };
+
+  // Close image preview
+  const closeImagePreview = () => {
+    setImagePreview(null);
   };
 
   return (
@@ -103,17 +147,25 @@ const ContactDetails = ({
             {activeTab === 'company' && (
               <div>
                 <div className="mb-6 flex flex-col items-center">
-                  <div className="h-20 w-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                    {contact.companyLogo ? (
+                  {/* Company Logo */}
+                  <div className="h-20 w-20 rounded-full bg-gray-100 flex items-center justify-center mb-4 overflow-hidden border-2 border-gray-200">
+                    {companyLogo && companyLogo.filePath ? (
                       <img 
-                        src={contact.companyLogo.filePath} 
+                        src={companyLogo.filePath} 
                         alt={companyName}
-                        className="h-20 w-20 rounded-full object-cover"
+                        className="h-full w-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setImagePreview(companyLogo)}
                       />
                     ) : (
-                      <span className="text-3xl font-medium text-gray-600">
-                        {companyName ? companyName.charAt(0).toUpperCase() : "?"}
-                      </span>
+                      <div className="flex flex-col items-center">
+                        {companyName ? (
+                          <span className="text-2xl font-medium text-gray-600">
+                            {companyName.charAt(0).toUpperCase()}
+                          </span>
+                        ) : (
+                          <Camera className="h-8 w-8 text-gray-400" />
+                        )}
+                      </div>
                     )}
                   </div>
                   <h2 className="text-xl font-semibold text-gray-800">{companyName}</h2>
@@ -164,7 +216,7 @@ const ContactDetails = ({
                     <div className="flex items-start">
                       <div className="flex-shrink-0 mt-1">
                         <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m-9 9a9 9 0 019-9"></path>
                         </svg>
                       </div>
                       <div className="ml-3">
@@ -284,55 +336,68 @@ const ContactDetails = ({
               <div>
                 {/* Additional Details */}
                 {additionalDetails ? (
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg mb-6">
                     <h3 className="text-md font-semibold text-gray-800 mb-2">Additional Information</h3>
                     <p className="text-sm text-gray-600 whitespace-pre-line">{additionalDetails}</p>
                   </div>
                 ) : (
-                  <div className="text-center py-6 text-gray-500">
+                  <div className="text-center py-6 text-gray-500 mb-6">
                     No additional details available.
                   </div>
                 )}
                 
                 {/* Attachments */}
-                {contact.attachments && contact.attachments.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="text-md font-semibold text-gray-800 mb-3">Attachments</h3>
+                {attachments && attachments.length > 0 ? (
+                  <div>
+                    <h3 className="text-md font-semibold text-gray-800 mb-3">
+                      Attachments ({attachments.length})
+                    </h3>
                     <div className="grid grid-cols-1 gap-3">
-                      {contact.attachments.map((attachment, index) => (
-                        <div key={index} className="flex items-center p-3 border border-gray-200 rounded-md">
+                      {attachments.map((attachment, index) => (
+                        <div key={index} className="flex items-center p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer transition-colors">
                           <div className="flex-shrink-0 mr-3">
-                            <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
+                            {getFileIcon(attachment.fileName, attachment.fileType)}
                           </div>
-                          <div className="min-w-0 flex-1">
+                          <div className="min-w-0 flex-1" onClick={() => handleAttachmentClick(attachment)}>
                             <p className="text-sm font-medium text-gray-900 truncate">
                               {attachment.fileName}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {attachment.fileType} • {(attachment.fileSize / 1024).toFixed(1)} KB
+                              {attachment.fileType}
+                              {attachment.fileSize && ` • ${(attachment.fileSize / 1024).toFixed(1)} KB`}
                             </p>
                           </div>
                           <div>
-                            <a
-                              href={attachment.filePath}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-indigo-600 hover:text-indigo-900 text-sm"
+                            <button
+                              onClick={() => handleAttachmentClick(attachment)}
+                              className="text-indigo-600 hover:text-indigo-900 text-sm flex items-center"
                             >
-                              View
-                            </a>
+                              {attachment.fileType && attachment.fileType.startsWith('image/') ? (
+                                <>
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  View
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="h-4 w-4 mr-1" />
+                                  Open
+                                </>
+                              )}
+                            </button>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
+                ) : (
+                  <div className="text-center py-6 text-gray-500">
+                    No attachments available.
+                  </div>
                 )}
                 
                 {/* Creation/Update timestamps */}
                 {contact.createdAt && (
-                  <div className="mt-6 text-xs text-gray-500">
+                  <div className="mt-6 text-xs text-gray-500 border-t pt-4">
                     Created: {new Date(contact.createdAt).toLocaleString()}
                     {contact.updatedAt && contact.updatedAt !== contact.createdAt && (
                       <span> • Updated: {new Date(contact.updatedAt).toLocaleString()}</span>
@@ -360,6 +425,48 @@ const ContactDetails = ({
           </div>
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      {imagePreview && (
+        <>
+          <div className="fixed inset-0 bg-black bg-opacity-75 z-60" onClick={closeImagePreview}></div>
+          <div className="fixed inset-0 flex items-center justify-center z-70 pointer-events-none">
+            <div className="max-w-4xl max-h-[90vh] bg-white rounded-lg overflow-hidden pointer-events-auto">
+              <div className="flex justify-between items-center p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {imagePreview.fileName || 'Company Logo'}
+                </h3>
+                <button 
+                  onClick={closeImagePreview}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+              <div className="p-4">
+                <img 
+                  src={imagePreview.filePath} 
+                  alt={imagePreview.fileName || 'Company Logo'}
+                  className="max-w-full max-h-[70vh] object-contain mx-auto"
+                />
+              </div>
+              <div className="p-4 border-t bg-gray-50 flex justify-center">
+                <a
+                  href={imagePreview.filePath}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Original
+                </a>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 };

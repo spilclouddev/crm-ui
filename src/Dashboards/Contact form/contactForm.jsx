@@ -1,4 +1,9 @@
 import React, { useState } from "react";
+import { Upload, X, Camera, FileText, File } from "lucide-react";
+
+// API base URL
+import config from '../../config';
+const API_URL = config.API_URL;
 
 const ContactForm = ({ 
   currentContact, 
@@ -28,6 +33,18 @@ const ContactForm = ({
   });
   const [showPersonForm, setShowPersonForm] = useState(false);
   const [editingPersonIndex, setEditingPersonIndex] = useState(-1);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+
+  // Function to get auth headers
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+      'Authorization': token ? `Bearer ${token}` : ''
+    };
+  };
 
   // Handle contact person input change
   const handlePersonInputChange = (e) => {
@@ -117,6 +134,317 @@ const ContactForm = ({
         ...currentContact,
         contactPersons: updatedPersons
       });
+    }
+  };
+
+  // Handle logo file selection
+  const handleLogoFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+      
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+      
+      setLogoFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setLogoPreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Upload logo
+  const handleLogoUpload = async (contactId) => {
+    if (!logoFile || !contactId) return null;
+    
+    try {
+      setUploading(true);
+      
+      const formData = new FormData();
+      formData.append('companyLogo', logoFile);
+      
+      const headers = getAuthHeaders();
+      
+      const response = await fetch(`${API_URL}/contacts/${contactId}/logo`, {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Logo upload failed: ${response.statusText}`);
+      }
+      
+      const updatedContact = await response.json();
+      console.log('Logo uploaded successfully');
+      
+      // Clear temporary states
+      setLogoFile(null);
+      setLogoPreview(null);
+      
+      return updatedContact;
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      alert('Failed to upload logo: ' + error.message);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Remove logo
+  const handleRemoveLogo = async () => {
+    if (!currentContact._id) {
+      // If editing and no logo file selected, just clear the preview
+      setLogoFile(null);
+      setLogoPreview(null);
+      return;
+    }
+    
+    if (!window.confirm('Are you sure you want to remove the company logo?')) {
+      return;
+    }
+    
+    try {
+      setUploading(true);
+      
+      const headers = getAuthHeaders();
+      
+      const response = await fetch(`${API_URL}/contacts/${currentContact._id}/logo`, {
+        method: 'DELETE',
+        headers
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to delete logo: ${response.statusText}`);
+      }
+      
+      const updatedContact = await response.json();
+      
+      // Update the current contact state
+      setCurrentContact({
+        ...currentContact,
+        companyLogo: undefined
+      });
+      
+      console.log('Logo deleted successfully');
+    } catch (error) {
+      console.error('Error deleting logo:', error);
+      alert('Failed to delete logo: ' + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Handle attachment file selection
+  const handleAttachmentFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    
+    if (files.length === 0) return;
+    
+    // For new contacts, store files temporarily
+    const newUploadedFiles = [...uploadedFiles];
+    const newAttachments = [...(currentContact.attachments || [])];
+    
+    files.forEach(file => {
+      // Validate file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`File ${file.name} is too large. Maximum size is 10MB.`);
+        return;
+      }
+      
+      const fileName = file.name;
+      if (!newAttachments.some(a => a.fileName === fileName)) {
+        newAttachments.push({
+          fileName,
+          fileType: file.type,
+          fileSize: file.size,
+          tempFile: true
+        });
+        newUploadedFiles.push(file);
+      }
+    });
+    
+    setCurrentContact(prev => ({
+      ...prev,
+      attachments: newAttachments
+    }));
+    
+    setUploadedFiles(newUploadedFiles);
+  };
+
+  // Upload attachments
+  const handleAttachmentsUpload = async (contactId) => {
+    if (uploadedFiles.length === 0 || !contactId) return null;
+    
+    try {
+      setUploading(true);
+      
+      const formData = new FormData();
+      uploadedFiles.forEach(file => {
+        formData.append('attachments', file);
+      });
+      
+      const headers = getAuthHeaders();
+      
+      const response = await fetch(`${API_URL}/contacts/${contactId}/attachments`, {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Attachments upload failed: ${response.statusText}`);
+      }
+      
+      const updatedContact = await response.json();
+      console.log('Attachments uploaded successfully');
+      
+      // Clear temporary states
+      setUploadedFiles([]);
+      
+      return updatedContact;
+    } catch (error) {
+      console.error('Error uploading attachments:', error);
+      alert('Failed to upload attachments: ' + error.message);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Remove attachment
+  const handleRemoveAttachment = async (index) => {
+    try {
+      const attachment = currentContact.attachments[index];
+      
+      // If it's a temporary file (not yet uploaded to server)
+      if (attachment.tempFile) {
+        // Just remove it from local state
+        const newAttachments = [...currentContact.attachments];
+        newAttachments.splice(index, 1);
+        
+        const newUploadedFiles = [...uploadedFiles];
+        const fileIndex = newUploadedFiles.findIndex(file => file.name === attachment.fileName);
+        if (fileIndex !== -1) {
+          newUploadedFiles.splice(fileIndex, 1);
+        }
+        
+        setCurrentContact({
+          ...currentContact,
+          attachments: newAttachments
+        });
+        
+        setUploadedFiles(newUploadedFiles);
+      } 
+      // If it's already on the server and we have a contact ID
+      else if (currentContact._id && attachment._id) {
+        if (!window.confirm('Are you sure you want to remove this attachment?')) {
+          return;
+        }
+        
+        setUploading(true);
+        
+        const headers = getAuthHeaders();
+        
+        const response = await fetch(`${API_URL}/contacts/${currentContact._id}/attachments/${attachment._id}`, {
+          method: 'DELETE',
+          headers
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to delete attachment: ${response.statusText}`);
+        }
+        
+        const updatedContact = await response.json();
+        
+        // Update form data with new attachments
+        setCurrentContact(prev => ({
+          ...prev,
+          attachments: updatedContact.attachments
+        }));
+        
+        setUploading(false);
+        console.log('Attachment deleted successfully');
+      } 
+      // Otherwise, just remove from local state
+      else {
+        const newAttachments = [...currentContact.attachments];
+        newAttachments.splice(index, 1);
+        
+        setCurrentContact({
+          ...currentContact,
+          attachments: newAttachments
+        });
+      }
+    } catch (error) {
+      console.error('Error removing attachment:', error);
+      alert('Failed to remove attachment: ' + error.message);
+      setUploading(false);
+    }
+  };
+
+  // Get file icon based on file type/extension
+  const getFileIcon = (fileName) => {
+    const extension = fileName.toLowerCase().split('.').pop();
+    
+    if (['pdf'].includes(extension)) {
+      return <FileText className="h-5 w-5 text-red-500" />;
+    } else if (['doc', 'docx'].includes(extension)) {
+      return <FileText className="h-5 w-5 text-blue-500" />;
+    } else if (['xls', 'xlsx'].includes(extension)) {
+      return <FileText className="h-5 w-5 text-green-500" />;
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
+      return <FileText className="h-5 w-5 text-purple-500" />;
+    } else {
+      return <File className="h-5 w-5 text-gray-500" />;
+    }
+  };
+
+  // Enhanced save contact function
+  const handleEnhancedSaveContact = async () => {
+    try {
+      // First save the contact
+      const savedContact = await handleSaveContact();
+      
+      if (!savedContact) {
+        return; // Save failed
+      }
+      
+      // Then upload logo if selected
+      if (logoFile) {
+        const updatedWithLogo = await handleLogoUpload(savedContact._id);
+        if (updatedWithLogo) {
+          setCurrentContact(updatedWithLogo);
+        }
+      }
+      
+      // Then upload attachments if any
+      if (uploadedFiles.length > 0) {
+        const updatedWithAttachments = await handleAttachmentsUpload(savedContact._id);
+        if (updatedWithAttachments) {
+          setCurrentContact(updatedWithAttachments);
+        }
+      }
+      
+      // Close the modal if everything succeeded
+      if (!logoFile || logoFile.length === 0) {
+        closeModal();
+      }
+      
+    } catch (error) {
+      console.error('Error in enhanced save:', error);
     }
   };
 
@@ -275,35 +603,67 @@ const ContactForm = ({
                   />
                 </div>
                 
-                {/* Company Logo placeholder - would need file upload capability */}
+                {/* Company Logo Upload */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Company Logo
                   </label>
-                  <div className="mt-1 flex items-center">
-                    <span className="inline-block h-12 w-12 rounded-full overflow-hidden bg-gray-100">
-                      {currentContact.companyLogo ? (
+                  <div className="flex items-center space-x-4">
+                    {/* Logo Preview */}
+                    <div className="h-20 w-20 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center border-2 border-gray-200">
+                      {logoPreview ? (
+                        <img 
+                          src={logoPreview} 
+                          alt="Logo Preview" 
+                          className="h-full w-full object-cover" 
+                        />
+                      ) : currentContact.companyLogo && currentContact.companyLogo.filePath ? (
                         <img 
                           src={currentContact.companyLogo.filePath} 
                           alt="Company Logo" 
                           className="h-full w-full object-cover" 
                         />
                       ) : (
-                        <svg className="h-full w-full text-gray-300" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
+                        <Camera className="h-8 w-8 text-gray-400" />
                       )}
-                    </span>
-                    <button
-                      type="button"
-                      className="ml-5 bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                      disabled
-                    >
-                      Upload Logo
-                    </button>
-                    <p className="text-xs text-gray-500 ml-3">
-                      (File upload to be implemented)
-                    </p>
+                    </div>
+                    
+                    {/* Upload Controls */}
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <label className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                          <span>Choose Logo</span>
+                          <input
+                            type="file"
+                            className="sr-only"
+                            accept="image/*"
+                            onChange={handleLogoFileSelect}
+                            disabled={uploading}
+                          />
+                        </label>
+                        
+                        {(logoPreview || (currentContact.companyLogo && currentContact.companyLogo.filePath)) && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveLogo}
+                            className="py-2 px-3 border border-red-300 rounded-md shadow-sm text-sm leading-4 font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            disabled={uploading}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      
+                      <p className="text-xs text-gray-500 mt-1">
+                        PNG, JPG, GIF up to 5MB. Recommended size: 300x300px
+                      </p>
+                      
+                      {logoFile && (
+                        <p className="text-xs text-green-600 mt-1">
+                          Selected: {logoFile.name} ({(logoFile.size / 1024).toFixed(1)} KB)
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -640,68 +1000,89 @@ const ContactForm = ({
                   ></textarea>
                 </div>
                 
-                {/* Attachments - would need file upload capability */}
+                {/* Attachments Upload */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Attachments
                   </label>
-                  <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                  
+                  {/* File Upload Area */}
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
                     <div className="space-y-1 text-center">
-                      <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
                       <div className="flex text-sm text-gray-600 justify-center">
                         <label
-                          htmlFor="file-upload"
+                          htmlFor="attachment-upload"
                           className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
                         >
                           <span>Upload files</span>
-                          <input id="file-upload" name="file-upload" type="file" className="sr-only" disabled />
+                          <input
+                            id="attachment-upload"
+                            name="attachment-upload"
+                            type="file"
+                            className="sr-only"
+                            multiple
+                            onChange={handleAttachmentFileSelect}
+                            disabled={uploading}
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt,.webp"
+                          />
                         </label>
                         <p className="pl-1">or drag and drop</p>
                       </div>
                       <p className="text-xs text-gray-500">
-                        PNG, JPG, PDF up to 10MB (File upload to be implemented)
+                        PNG, JPG, PDF, Word, Excel files up to 10MB each
                       </p>
                     </div>
                   </div>
+                  
+                  {/* Display current attachments */}
+                  {currentContact.attachments && currentContact.attachments.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">
+                        Attachments ({currentContact.attachments.length})
+                      </h4>
+                      <ul className="border border-gray-200 rounded-md divide-y divide-gray-200">
+                        {currentContact.attachments.map((attachment, index) => (
+                          <li key={index} className="px-4 py-3 flex items-center justify-between text-sm">
+                            <div className="flex items-center">
+                              {getFileIcon(attachment.fileName)}
+                              <div className="ml-3">
+                                <span className="truncate max-w-xs font-medium">{attachment.fileName}</span>
+                                <div className="text-xs text-gray-500">
+                                  {attachment.fileType} 
+                                  {attachment.fileSize && ` • ${(attachment.fileSize / 1024).toFixed(1)} KB`}
+                                  {attachment.tempFile && (
+                                    <span className="text-orange-600"> • Will upload after saving</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {!attachment.tempFile && attachment.filePath && (
+                                <a
+                                  href={attachment.filePath}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-indigo-600 hover:text-indigo-900"
+                                >
+                                  View
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAttachment(index)}
+                                className="text-red-600 hover:text-red-900"
+                                disabled={uploading}
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
-                
-                {/* Display existing attachments if any */}
-                {currentContact.attachments && currentContact.attachments.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Current Attachments</h4>
-                    <ul className="divide-y divide-gray-200 border border-gray-200 rounded-md">
-                      {currentContact.attachments.map((attachment, index) => (
-                        <li key={index} className="px-4 py-3 flex items-center justify-between text-sm">
-                          <div className="flex items-center">
-                            <svg className="flex-shrink-0 h-5 w-5 text-gray-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clipRule="evenodd" />
-                            </svg>
-                            <span className="truncate">{attachment.fileName}</span>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <a
-                              href={attachment.filePath}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-indigo-600 hover:text-indigo-900"
-                            >
-                              View
-                            </a>
-                            <button
-                              type="button"
-                              className="text-red-600 hover:text-red-900"
-                              disabled
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -712,23 +1093,23 @@ const ContactForm = ({
               type="button"
               onClick={closeModal}
               className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              disabled={isLoading}
+              disabled={isLoading || uploading}
             >
               Cancel
             </button>
             <button
               type="button"
-              onClick={handleSaveContact}
+              onClick={handleEnhancedSaveContact}
               className="px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-              disabled={isLoading}
+              disabled={isLoading || uploading}
             >
-              {isLoading ? (
+              {isLoading || uploading ? (
                 <span className="flex items-center">
                   <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Processing...
+                  {uploading ? 'Uploading...' : 'Processing...'}
                 </span>
               ) : (
                 isEditing ? "Update" : "Add"
