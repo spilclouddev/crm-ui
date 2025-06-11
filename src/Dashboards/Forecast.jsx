@@ -28,13 +28,13 @@ const Forecast = () => {
     };
   };
 
-  // Load subscription status from localStorage
+  // Load subscription status from localStorage with better error handling
   const loadSubscriptionStatus = () => {
     try {
       const savedStatus = localStorage.getItem('forecast_subscription_status');
       if (savedStatus) {
         const parsedStatus = JSON.parse(savedStatus);
-        setSubscriptionStatus(parsedStatus);
+        console.log("Loaded subscription status from localStorage:", parsedStatus);
         return parsedStatus;
       }
     } catch (err) {
@@ -43,10 +43,11 @@ const Forecast = () => {
     return {};
   };
 
-  // Save subscription status to localStorage
+  // Save subscription status to localStorage with better error handling
   const saveSubscriptionStatus = (status) => {
     try {
       localStorage.setItem('forecast_subscription_status', JSON.stringify(status));
+      console.log("Saved subscription status to localStorage:", status);
     } catch (err) {
       console.error("Error saving subscription status:", err);
     }
@@ -62,6 +63,7 @@ const Forecast = () => {
         initialStatus[lead._id] = Array(12).fill(false);
       });
       setSubscriptionStatus(initialStatus);
+      saveSubscriptionStatus(initialStatus);
     } catch (err) {
       console.error("Error clearing subscription status:", err);
     }
@@ -86,18 +88,25 @@ const Forecast = () => {
       // Filter out leads that aren't in "Won - Deal Closed" stage
       const closedLeads = leadsData.filter(lead => lead.stage === "Won - Deal Closed");
       
-      // Load existing subscription status from localStorage
+      // Load existing subscription status from localStorage FIRST
       const savedStatus = loadSubscriptionStatus();
       
-      // Initialize subscription status for each lead, preserving saved data
-      const initialStatus = {};
+      // Initialize subscription status for each lead, preserving ALL saved data
+      const initialStatus = { ...savedStatus }; // Start with saved data
+      
       closedLeads.forEach(lead => {
-        // Use saved status if available, otherwise initialize with all false
-        initialStatus[lead._id] = savedStatus[lead._id] || Array(12).fill(false);
+        // Only initialize if lead doesn't exist in saved status
+        if (!initialStatus[lead._id]) {
+          initialStatus[lead._id] = Array(12).fill(false);
+        }
       });
       
       setLeads(closedLeads);
       setSubscriptionStatus(initialStatus);
+      
+      // Save the merged status back to localStorage to ensure persistence
+      saveSubscriptionStatus(initialStatus);
+      
       setLoading(false);
     } catch (err) {
       console.error("Error fetching leads:", err);
@@ -111,10 +120,14 @@ const Forecast = () => {
     fetchLeads();
   }, []);
 
-  // Save subscription status to localStorage whenever it changes
+  // Save subscription status to localStorage whenever it changes (with debounce)
   useEffect(() => {
     if (Object.keys(subscriptionStatus).length > 0) {
-      saveSubscriptionStatus(subscriptionStatus);
+      const timeoutId = setTimeout(() => {
+        saveSubscriptionStatus(subscriptionStatus);
+      }, 100); // Small debounce to avoid excessive saves
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [subscriptionStatus]);
 
@@ -151,9 +164,6 @@ const Forecast = () => {
       updatedMonths[monthIndex] = !updatedMonths[monthIndex];
       
       newStatus[leadId] = updatedMonths;
-      
-      // Save to localStorage whenever subscription status changes
-      saveSubscriptionStatus(newStatus);
       
       return newStatus;
     });
@@ -220,48 +230,54 @@ const Forecast = () => {
     })}`;
   };
 
-  // Prepare chart data
+  // Prepare chart data - FIXED TO SHOW ONLY MONTHLY SUBSCRIPTION VALUES
   const getChartOptions = () => {
-    // Prepare data for each company
+    // Prepare data for each company - focusing on monthly subscription only
     const chartData = leads.map(lead => {
-      const receivedRevenue = calculateReceivedRevenue(lead);
-      const expectedRevenue = calculateExpectedRevenue(lead);
-      const remainingRevenue = expectedRevenue - receivedRevenue;
+      const monthlySubscription = parseFloat(lead.subscription || 0);
+      const completedMonths = subscriptionStatus[lead._id] 
+        ? subscriptionStatus[lead._id].filter(month => month).length 
+        : 0;
+      const receivedSubscriptionRevenue = monthlySubscription * completedMonths;
+      const remainingSubscriptionRevenue = monthlySubscription * (12 - completedMonths);
       
       return {
         company: lead.company,
-        implementationValue: parseFloat(lead.value || 0),
-        annualSubscription: parseFloat(lead.subscription || 0) * 12,
-        receivedRevenue: receivedRevenue,
-        expectedRevenue: expectedRevenue
+        monthlySubscription: monthlySubscription,
+        completedMonths: completedMonths,
+        receivedSubscriptionRevenue: receivedSubscriptionRevenue,
+        remainingSubscriptionRevenue: remainingSubscriptionRevenue,
+        totalAnnualSubscription: monthlySubscription * 12
       };
     });
 
-    // Prepare data points for the stacked bar chart
+    // Prepare data points for the stacked bar chart (subscription only)
     const receivedData = chartData.map(data => ({
-      y: data.receivedRevenue,
+      y: data.receivedSubscriptionRevenue,
       label: data.company,
-      implementationValue: data.implementationValue,
-      annualSubscription: data.annualSubscription,
-      expectedRevenue: data.expectedRevenue
+      monthlySubscription: data.monthlySubscription,
+      completedMonths: data.completedMonths,
+      totalAnnualSubscription: data.totalAnnualSubscription
     }));
 
     const remainingData = chartData.map(data => ({
-      y: data.expectedRevenue - data.receivedRevenue,
+      y: data.remainingSubscriptionRevenue,
       label: data.company
     }));
 
     return {
       animationEnabled: true,
-      theme: "light2",
+      theme: "darkblue",
       title: {
         text: ""
       },
       axisX: {
-        title: "Companies"
+        title: "Companies",
+        titleFontColor: "black"
       },
       axisY: {
-        title: "Amount (AUD)",
+        title: "Subscription Amount (AUD)",
+        titleFontColor: "black",
         includeZero: true
       },
       toolTip: {
@@ -272,23 +288,20 @@ const Forecast = () => {
           // Get the dataPoint from the first entry
           const dataPoint = e.entries[0].dataPoint;
           
-          if (dataPoint.implementationValue !== undefined) {
-            content += `<span style="color: #369EAD;">Implementation Value:</span> $${dataPoint.implementationValue.toLocaleString(undefined, {
+          if (dataPoint.monthlySubscription !== undefined) {
+            content += `<span style="color: #369EAD;">Monthly Subscription:</span> $${dataPoint.monthlySubscription.toLocaleString(undefined, {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2
             })}<br/>`;
             
-            content += `<span style="color: #C24642;">Annual Subscription:</span> $${dataPoint.annualSubscription.toLocaleString(undefined, {
+            content += `<span style="color: #7F6084;">Completed Months:</span> ${dataPoint.completedMonths}/12<br/>`;
+            
+            content += `<span style="color: #7F6084;">Received Subscription Revenue:</span> $${(dataPoint.monthlySubscription * dataPoint.completedMonths).toLocaleString(undefined, {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2
             })}<br/>`;
             
-            content += `<span style="color: #7F6084;">Received Revenue:</span> $${dataPoint.receivedRevenue.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            })}<br/>`;
-            
-            content += `<span style="color: #4F81BC;">Expected Total Revenue:</span> $${dataPoint.expectedRevenue.toLocaleString(undefined, {
+            content += `<span style="color: #4F81BC;">Total Annual Subscription:</span> $${dataPoint.totalAnnualSubscription.toLocaleString(undefined, {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2
             })}<br/>`;
@@ -304,7 +317,7 @@ const Forecast = () => {
       data: [
         {
           type: "stackedColumn",
-          name: "Received Revenue",
+          name: "Received Subscription Revenue",
           showInLegend: true,
           color: "#7F6084",
           indexLabel: "${y}",
@@ -323,10 +336,21 @@ const Forecast = () => {
         },
         {
           type: "stackedColumn",
-          name: "Expected Revenue (Remaining)",
+          name: "Remaining Subscription Revenue",
           showInLegend: true,
           color: "#4F81BC",
-          indexLabel: "",
+          indexLabel: "${y}",
+          indexLabelPlacement: "inside",
+          indexLabelFontColor: "white",
+          indexLabelFormatter: function(e) {
+            if (e.dataPoint.y > 0) {
+              return "$" + e.dataPoint.y.toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              });
+            }
+            return "";
+          },
           dataPoints: remainingData
         }
       ]
@@ -349,7 +373,7 @@ const Forecast = () => {
       {/* Chart Section */}
       <div className="bg-white p-4 sm:p-6 rounded-md shadow mb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          <h2 className="text-lg sm:text-xl font-semibold">Revenue Forecast</h2>
+          <h2 className="text-lg sm:text-xl font-semibold">Monthly Subscription Revenue Forecast</h2>
           <div className="flex flex-col sm:flex-row gap-2">
             {/* <button 
               className="px-3 py-2 flex items-center text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
